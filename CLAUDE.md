@@ -75,14 +75,15 @@ A card only moves to **In Review** once both are true: the story is complete and
 
 ### After the PR merges
 
-Move the card to `## Done`, then sync local git and prune the merged remote branch:
+Move the card to `## Done`, then sync local git, prune the merged remote branch, and delete the local branch:
 
 ```bash
 git fetch --prune
 git checkout main && git pull
+git branch -d feat/descriptive-branch-name
 ```
 
-`git fetch --prune` removes the stale remote-tracking ref for the merged feature branch.
+`git fetch --prune` removes the stale remote-tracking ref for the merged feature branch. **Always delete the local branch once its remote has been pruned** — leftover local branches whose upstream is gone are dead and should not linger. List them with `git branch -vv` (look for `: gone]`) and remove each with `git branch -d <name>`.
 
 ## Notes
 
