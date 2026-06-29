@@ -25,6 +25,7 @@ next-env.d.ts
 
 # Prisma
 /prisma/*.db
+/src/generated/
 
 # Debug logs
 npm-debug.log*

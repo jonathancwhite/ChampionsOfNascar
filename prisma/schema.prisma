@@ -1,0 +1,191 @@
+// NASCAR 25 Championship Tracker — data model
+// See plans/nascar25-championship-tracker.md (Data Model) and
+// plans/NASCAR-002-prisma-schema-database.md for the source spec.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  // Prisma 7: connection URLs live in prisma.config.ts (migrations) and the
+  // driver adapter in src/lib/db.ts (runtime), not in this block.
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum SeriesType {
+  ARCA
+  TRUCK
+  XFINITY
+  CUP
+}
+
+enum LeagueRole {
+  ADMIN
+  MEMBER
+}
+
+enum RaceStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+enum EmailType {
+  RACE_SCHEDULED
+  RACE_REMINDER
+}
+
+// ---------------------------------------------------------------------------
+// Models
+// ---------------------------------------------------------------------------
+
+/// A player. Synced from Clerk via webhook (NASCAR-011).
+model User {
+  id          String   @id @default(cuid())
+  clerkId     String   @unique
+  email       String   @unique
+  displayName String?
+  imageUrl    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdLeagues League[]           @relation("LeagueCreator")
+  memberships    LeagueMembership[]
+  participants   RaceParticipant[]
+  emailLogs      EmailLog[]
+}
+
+/// A shared online career season. Creator gets an ADMIN membership.
+model League {
+  id               String     @id @default(cuid())
+  name             String
+  series           SeriesType
+  numberOfRaces    Int
+  lapsPercent      Int
+  joinCode         String     @unique
+  /// Effective points scheme; null = default 40-down (see src/lib/points.ts).
+  pointsSystem     Json?
+  reminderLeadDays Int        @default(5)
+  /// Lifecycle: "setup" | "active" | "finished".
+  status           String     @default("setup")
+  creatorId        String
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  creator     User               @relation("LeagueCreator", fields: [creatorId], references: [id])
+  memberships LeagueMembership[]
+  races       Race[]
+}
+
+/// Join table: which users belong to which league, and their role.
+model LeagueMembership {
+  id        String     @id @default(cuid())
+  leagueId  String
+  userId    String
+  role      LeagueRole @default(MEMBER)
+  createdAt DateTime   @default(now())
+
+  league       League            @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  participants RaceParticipant[]
+
+  @@unique([leagueId, userId])
+}
+
+/// Global seed pool of NASCAR 25 tracks (NASCAR-003). A track may be
+/// available in multiple series.
+model Track {
+  id        String       @id @default(cuid())
+  name      String       @unique
+  shortName String?
+  series    SeriesType[]
+  trackType String?
+  active    Boolean      @default(true)
+  createdAt DateTime     @default(now())
+
+  races Race[]
+}
+
+/// One round of a league season. Schedule is generated on league creation;
+/// scheduledAt is set later by an admin (NASCAR-050).
+model Race {
+  id          String     @id @default(cuid())
+  leagueId    String
+  trackId     String
+  round       Int
+  scheduledAt DateTime?
+  status      RaceStatus @default(SCHEDULED)
+  completedAt DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  league       League            @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  track        Track             @relation(fields: [trackId], references: [id])
+  participants RaceParticipant[]
+  emailLogs    EmailLog[]
+
+  @@unique([leagueId, round])
+  // Drives the daily reminder cron query (NASCAR-052).
+  @@index([scheduledAt, status])
+}
+
+/// Who is in a race. Humans link to a User + LeagueMembership; AI drivers
+/// set isAi + aiName and have no user. Lets results attach uniformly.
+model RaceParticipant {
+  id           String   @id @default(cuid())
+  raceId       String
+  userId       String?
+  membershipId String?
+  isAi         Boolean  @default(false)
+  aiName       String?
+  carNumber    Int?
+  createdAt    DateTime @default(now())
+
+  race       Race              @relation(fields: [raceId], references: [id], onDelete: Cascade)
+  user       User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  membership LeagueMembership? @relation(fields: [membershipId], references: [id], onDelete: SetNull)
+  result     RaceResult?
+
+  // Null userIds (AI rows) are treated as distinct by Postgres, so multiple
+  // AI participants per race are allowed.
+  @@unique([raceId, userId])
+}
+
+/// 1:1 with a participant. Points are computed at entry time and
+/// denormalized so standings are a simple SUM.
+model RaceResult {
+  id            String   @id @default(cuid())
+  participantId String   @unique
+  finishPos     Int
+  startPos      Int?
+  points        Int      @default(0)
+  lapsLed       Int      @default(0)
+  bonusPoints   Int      @default(0)
+  dnf           Boolean  @default(false)
+  /// Optional finish status note, e.g. "running" | "dnf" | "dns".
+  status        String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  participant RaceParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+}
+
+/// Send-once log for transactional email. dedupeKey enforces idempotency.
+model EmailLog {
+  id        String    @id @default(cuid())
+  raceId    String?
+  userId    String?
+  email     String
+  type      EmailType
+  dedupeKey String    @unique
+  resendId  String?
+  sentAt    DateTime  @default(now())
+
+  race Race? @relation(fields: [raceId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
