@@ -64,6 +64,7 @@ When the work is done **and** the PR is created, in `C:\Users\JCLW\Desktop\produ
 
    ```markdown
    ## In Review
+
    - [ ] [B - Leagues & Membership] NSC-020: Create League
      - PR: https://github.com/jonathancwhite/nascar25-championship/pull/<n>
    ```
