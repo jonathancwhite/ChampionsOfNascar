@@ -9,6 +9,8 @@ export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
+    // `npm run db:seed` (prisma db seed) runs this after migrations.
+    seed: "tsx prisma/seed.ts",
   },
   datasource: {
     // Direct (unpooled) connection for migrations. With a pooled DATABASE_URL
