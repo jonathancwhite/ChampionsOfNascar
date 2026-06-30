@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Cancel superseded runs on the same ref to save minutes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Quality gates
+    runs-on: ubuntu-latest
+    # Dummy/decoy values so `next build` and env validation pass without real
+    # secrets. The build pages are force-dynamic, so no real DB/Clerk/Resend is
+    # contacted. Override with repo secrets if integration tests are added later.
+    env:
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_ZGVjb3ktZXhhbXBsZS5jbGVyay5hY2NvdW50cy5kZXYk
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      DATABASE_URL: postgresql://user:pass@localhost:5432/db
+      DIRECT_URL: postgresql://user:pass@localhost:5432/db
+      CLERK_SECRET_KEY: ci-clerk-secret
+      CLERK_WEBHOOK_SECRET: ci-webhook-secret
+      RESEND_API_KEY: ci-resend-key
+      EMAIL_FROM: NASCAR 25 <noreply@example.com>
+      CRON_SECRET: ci-cron-secret
+      EMAIL_UNSUBSCRIBE_SECRET: ci-unsubscribe-secret
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Validate Prisma schema
+        run: npx prisma validate
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
