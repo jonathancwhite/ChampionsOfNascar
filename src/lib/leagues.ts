@@ -9,6 +9,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { LeagueRole } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/db";
 import { classifyJoin, normalizeJoinCode } from "@/lib/join";
+import { LEAGUE_STATUSES, isValidStatusTransition } from "@/lib/league-status";
 import { generateSchedule } from "@/lib/schedule";
 import { SERIES_VALUES, type SeriesValue } from "@/lib/series";
 
@@ -238,4 +239,70 @@ export async function joinLeague(
   }
 
   return { ok: true, leagueId: league!.id, alreadyMember: false };
+}
+
+export const updateLeagueSettingsSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, "League name is required.")
+    .max(80, "Name is too long."),
+  lapsPercent: z.coerce
+    .number()
+    .int("Enter a whole number.")
+    .min(1, "Minimum 1%.")
+    .max(100, "Maximum 100%."),
+  reminderLeadDays: z.coerce
+    .number()
+    .int("Enter a whole number.")
+    .min(0, "Cannot be negative.")
+    .max(30, "Maximum 30 days."),
+  status: z.enum(LEAGUE_STATUSES),
+});
+
+export type UpdateLeagueSettingsResult =
+  | { ok: true }
+  | { ok: false; error?: string; fieldErrors?: Record<string, string> };
+
+/**
+ * Update an admin-editable league's settings (NASCAR-022): name, lap %,
+ * reminder lead days, and lifecycle status. Series and number of races are NOT
+ * editable here — the schedule is already generated against them; reshuffling
+ * is the separate regenerate flow (NASCAR-041). Validation mirrors createLeague;
+ * the status change must be a valid lifecycle transition. Authorization is the
+ * caller's responsibility (`requireLeagueRole`).
+ */
+export async function updateLeagueSettings(
+  leagueId: string,
+  input: Record<string, unknown>,
+): Promise<UpdateLeagueSettingsResult> {
+  const parsed = updateLeagueSettingsSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, fieldErrors: firstFieldErrors(parsed.error) };
+  }
+  const { name, lapsPercent, reminderLeadDays, status } = parsed.data;
+
+  const league = await prisma.league.findUnique({
+    where: { id: leagueId },
+    select: { status: true },
+  });
+  if (!league) {
+    return { ok: false, error: "League not found." };
+  }
+
+  if (!isValidStatusTransition(league.status, status)) {
+    return {
+      ok: false,
+      fieldErrors: {
+        status: `Cannot change status from ${league.status} to ${status}.`,
+      },
+    };
+  }
+
+  await prisma.league.update({
+    where: { id: leagueId },
+    data: { name, lapsPercent, reminderLeadDays, status },
+  });
+
+  return { ok: true };
 }

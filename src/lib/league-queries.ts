@@ -277,6 +277,34 @@ export async function getLeagueStandings(
   };
 }
 
+export type LeagueSettings = {
+  id: string;
+  name: string;
+  series: string;
+  numberOfRaces: number;
+  lapsPercent: number;
+  reminderLeadDays: number;
+  status: string;
+};
+
+/** Editable league settings for the admin manage page (NASCAR-022). */
+export async function getLeagueSettings(
+  leagueId: string,
+): Promise<LeagueSettings | null> {
+  return prisma.league.findUnique({
+    where: { id: leagueId },
+    select: {
+      id: true,
+      name: true,
+      series: true,
+      numberOfRaces: true,
+      lapsPercent: true,
+      reminderLeadDays: true,
+      status: true,
+    },
+  });
+}
+
 export type RaceResultRow = {
   participantId: string;
   driverName: string;

@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/table";
 import { getOrCreateCurrentUser } from "@/lib/auth";
 import { getLeagueOverview } from "@/lib/league-queries";
+import { leagueStatusLabel } from "@/lib/league-status";
 import { SERIES_LABELS, type SeriesValue } from "@/lib/series";
 
 export const metadata: Metadata = {
@@ -28,12 +29,6 @@ export const metadata: Metadata = {
 };
 
 export const dynamic = "force-dynamic";
-
-const STATUS_LABELS: Record<string, string> = {
-  setup: "Setup",
-  active: "Active",
-  finished: "Finished",
-};
 
 export default async function LeaguePage({
   params,
@@ -67,14 +62,22 @@ export default async function LeaguePage({
           <p className="text-muted-foreground mt-1">
             {SERIES_LABELS[league.series as SeriesValue]} series ·{" "}
             {league.numberOfRaces} races · {league.lapsPercent}% laps ·{" "}
-            {STATUS_LABELS[league.status] ?? league.status} · {members.length}{" "}
+            {leagueStatusLabel(league.status)} · {members.length}{" "}
             {members.length === 1 ? "member" : "members"}
           </p>
         </div>
         {isAdmin ? (
-          <span className="bg-primary/10 text-primary shrink-0 rounded-full px-2 py-0.5 text-xs font-medium">
-            Admin
-          </span>
+          <div className="flex shrink-0 items-center gap-2">
+            <span className="bg-primary/10 text-primary rounded-full px-2 py-0.5 text-xs font-medium">
+              Admin
+            </span>
+            <Link
+              href={`/leagues/${league.id}/manage`}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              Settings
+            </Link>
+          </div>
         ) : null}
       </div>
 

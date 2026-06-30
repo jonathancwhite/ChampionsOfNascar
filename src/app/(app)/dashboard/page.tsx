@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/card";
 import { getOrCreateCurrentUser } from "@/lib/auth";
 import { getDashboardLeagues } from "@/lib/league-queries";
+import { leagueStatusLabel } from "@/lib/league-status";
 import { SERIES_LABELS, type SeriesValue } from "@/lib/series";
 import { cn } from "@/lib/utils";
 
@@ -21,12 +22,6 @@ export const metadata: Metadata = {
 };
 
 export const dynamic = "force-dynamic";
-
-const STATUS_LABELS: Record<string, string> = {
-  setup: "Setup",
-  active: "Active",
-  finished: "Finished",
-};
 
 export default async function DashboardPage() {
   const user = await getOrCreateCurrentUser();
@@ -105,7 +100,7 @@ export default async function DashboardPage() {
                     {SERIES_LABELS[league.series as SeriesValue]} ·{" "}
                     {league.numberOfRaces} races · {league.memberCount}{" "}
                     {league.memberCount === 1 ? "member" : "members"} ·{" "}
-                    {STATUS_LABELS[league.status] ?? league.status}
+                    {leagueStatusLabel(league.status)}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
