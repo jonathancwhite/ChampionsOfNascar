@@ -34,17 +34,19 @@ All variables live in `.env` (gitignored; never commit real secrets). See
 [`.env.example`](./.env.example) for the canonical list and inline notes.
 `NEXT_PUBLIC_*` vars are exposed to the browser; everything else is server-only.
 
-| Variable                            | Required  | Where to get it                                                                                           |
-| ----------------------------------- | --------- | --------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`                      | yes       | Postgres provider (Neon/Supabase) → pooled connection string.                                             |
-| `DIRECT_URL`                        | if pooled | Same provider → direct/unpooled string. Only needed when `DATABASE_URL` is a pooler; used for migrations. |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | yes       | Clerk Dashboard → API Keys.                                                                               |
-| `CLERK_SECRET_KEY`                  | yes       | Clerk Dashboard → API Keys.                                                                               |
-| `CLERK_WEBHOOK_SECRET`              | yes       | Clerk Dashboard → Webhooks → endpoint → Signing Secret.                                                   |
-| `RESEND_API_KEY`                    | yes       | Resend Dashboard → API Keys.                                                                              |
-| `EMAIL_FROM`                        | yes       | A verified sender on your Resend domain, e.g. `NASCAR 25 <noreply@yourdomain.com>`.                       |
-| `CRON_SECRET`                       | yes       | Generate a high-entropy string: `openssl rand -hex 32`.                                                   |
-| `NEXT_PUBLIC_APP_URL`               | yes       | Public origin, no trailing slash. Local: `http://localhost:3000`.                                         |
+| Variable                                                                                | Required    | Where to get it                                                                                           |
+| --------------------------------------------------------------------------------------- | ----------- | --------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                                                                          | yes         | Postgres provider (Neon/Supabase) → pooled connection string.                                             |
+| `DIRECT_URL`                                                                            | if pooled   | Same provider → direct/unpooled string. Only needed when `DATABASE_URL` is a pooler; used for migrations. |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`                                                     | yes         | Clerk Dashboard → API Keys.                                                                               |
+| `CLERK_SECRET_KEY`                                                                      | yes         | Clerk Dashboard → API Keys.                                                                               |
+| `CLERK_WEBHOOK_SECRET`                                                                  | yes         | Clerk Dashboard → Webhooks → endpoint → Signing Secret.                                                   |
+| `NEXT_PUBLIC_CLERK_SIGN_IN_URL` / `..._SIGN_UP_URL`                                     | recommended | Set to `/sign-in` and `/sign-up` to keep auth in-app instead of Clerk's hosted Account Portal.            |
+| `NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL` / `..._SIGN_UP_FALLBACK_REDIRECT_URL` | recommended | Where to land after auth, e.g. `/dashboard`.                                                              |
+| `RESEND_API_KEY`                                                                        | yes         | Resend Dashboard → API Keys.                                                                              |
+| `EMAIL_FROM`                                                                            | yes         | A verified sender on your Resend domain, e.g. `NASCAR 25 <noreply@yourdomain.com>`.                       |
+| `CRON_SECRET`                                                                           | yes         | Generate a high-entropy string: `openssl rand -hex 32`.                                                   |
+| `NEXT_PUBLIC_APP_URL`                                                                   | yes         | Public origin, no trailing slash. Local: `http://localhost:3000`.                                         |
 
 ### Setting them in Vercel
 

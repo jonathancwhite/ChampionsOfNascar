@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Flag } from "lucide-react";
+import { Show } from "@clerk/nextjs";
 
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
@@ -23,15 +24,25 @@ export default function Home() {
       </p>
 
       <div className="mt-10 flex flex-col gap-3 sm:flex-row">
-        <Link href="/dashboard" className={cn(buttonVariants({ size: "lg" }))}>
-          Get started
-        </Link>
-        <Link
-          href="/dashboard"
-          className={cn(buttonVariants({ size: "lg", variant: "outline" }))}
-        >
-          Sign in
-        </Link>
+        <Show when="signed-out">
+          <Link href="/sign-up" className={cn(buttonVariants({ size: "lg" }))}>
+            Get started
+          </Link>
+          <Link
+            href="/sign-in"
+            className={cn(buttonVariants({ size: "lg", variant: "outline" }))}
+          >
+            Sign in
+          </Link>
+        </Show>
+        <Show when="signed-in">
+          <Link
+            href="/dashboard"
+            className={cn(buttonVariants({ size: "lg" }))}
+          >
+            Go to dashboard
+          </Link>
+        </Show>
       </div>
     </main>
   );

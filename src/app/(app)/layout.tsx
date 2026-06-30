@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { Flag } from "lucide-react";
+import { UserButton } from "@clerk/nextjs";
 
-// Shared shell for authenticated pages. Auth/route protection is added in
-// NASCAR-010 (Clerk); for now this is an empty signed-in layout.
+// Shared shell for authenticated pages. Route protection is enforced by
+// src/middleware.ts (NASCAR-010); reaching this layout implies a signed-in user.
 export default function AppLayout({
   children,
 }: Readonly<{
@@ -19,6 +20,11 @@ export default function AppLayout({
             <Flag className="size-5" />
             NASCAR 25 Championship
           </Link>
+          {/* Sign-out lives in the UserButton menu; the post-sign-out
+              destination is set via afterSignOutUrl on <ClerkProvider>. */}
+          <div className="ml-auto">
+            <UserButton />
+          </div>
         </div>
       </header>
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">

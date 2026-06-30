@@ -38,6 +38,14 @@ const serverSchema = z.object({
 const clientSchema = z.object({
   // Clerk publishable (browser) key (NASCAR-010).
   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().min(1),
+  // Clerk routing. Clerk reads these directly; declared here so they are
+  // documented and shape-checked. Optional — Clerk falls back to its hosted
+  // Account Portal when unset, but set them to the local routes below so
+  // middleware redirects and the <SignIn>/<SignUp> components stay in-app.
+  NEXT_PUBLIC_CLERK_SIGN_IN_URL: z.string().optional(),
+  NEXT_PUBLIC_CLERK_SIGN_UP_URL: z.string().optional(),
+  NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL: z.string().optional(),
+  NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL: z.string().optional(),
   // Public origin used to build absolute URLs in emails and links.
   NEXT_PUBLIC_APP_URL: z.url(),
 });
@@ -68,6 +76,12 @@ function parse<T extends z.ZodType>(
 const clientSource = {
   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:
     process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+  NEXT_PUBLIC_CLERK_SIGN_IN_URL: process.env.NEXT_PUBLIC_CLERK_SIGN_IN_URL,
+  NEXT_PUBLIC_CLERK_SIGN_UP_URL: process.env.NEXT_PUBLIC_CLERK_SIGN_UP_URL,
+  NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL:
+    process.env.NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL,
+  NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL:
+    process.env.NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL,
   NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
 };
 
