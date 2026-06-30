@@ -8,6 +8,7 @@ import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
 import { LeagueRole } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/db";
+import { classifyJoin, normalizeJoinCode } from "@/lib/join";
 import { generateSchedule } from "@/lib/schedule";
 import { SERIES_VALUES, type SeriesValue } from "@/lib/series";
 
@@ -169,4 +170,72 @@ export async function createLeague(
     ok: false,
     error: "Could not generate a unique join code. Please try again.",
   };
+}
+
+function isUniqueViolation(error: unknown): boolean {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2002"
+  );
+}
+
+export type JoinLeagueResult =
+  | { ok: true; leagueId: string; alreadyMember: boolean }
+  | { ok: false; error: string };
+
+/**
+ * Join a league by its code (NASCAR-030). Normalizes the code, looks up the
+ * league, and creates a MEMBER membership for `userId`. Idempotent: an existing
+ * (or concurrently-created) membership resolves to `alreadyMember: true` rather
+ * than erroring, backed by the `@@unique([leagueId, userId])` constraint.
+ */
+export async function joinLeague(
+  userId: string,
+  rawCode: string,
+): Promise<JoinLeagueResult> {
+  const code = normalizeJoinCode(rawCode);
+  if (code.length === 0) {
+    return { ok: false, error: "Enter a join code." };
+  }
+
+  const league = await prisma.league.findUnique({
+    where: { joinCode: code },
+    select: { id: true, status: true },
+  });
+
+  const alreadyMember = league
+    ? (await prisma.leagueMembership.findUnique({
+        where: { leagueId_userId: { leagueId: league.id, userId } },
+        select: { id: true },
+      })) !== null
+    : false;
+
+  const decision = classifyJoin({
+    leagueExists: league !== null,
+    status: league?.status,
+    alreadyMember,
+  });
+
+  switch (decision.kind) {
+    case "error":
+      return { ok: false, error: decision.error };
+    case "already":
+      return { ok: true, leagueId: league!.id, alreadyMember: true };
+    case "join":
+      break;
+  }
+
+  try {
+    await prisma.leagueMembership.create({
+      data: { leagueId: league!.id, userId, role: LeagueRole.MEMBER },
+    });
+  } catch (error) {
+    // Concurrent join created the membership first — treat as already joined.
+    if (isUniqueViolation(error)) {
+      return { ok: true, leagueId: league!.id, alreadyMember: true };
+    }
+    throw error;
+  }
+
+  return { ok: true, leagueId: league!.id, alreadyMember: false };
 }
