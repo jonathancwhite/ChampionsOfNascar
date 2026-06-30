@@ -344,6 +344,85 @@ export async function getLeagueSettings(
   });
 }
 
+export type TrackOption = {
+  id: string;
+  name: string;
+  trackType: string | null;
+};
+
+export type ManageScheduleRound = {
+  raceId: string;
+  round: number;
+  trackId: string;
+  trackName: string;
+  trackType: string | null;
+  scheduledAt: Date | null;
+  status: RaceStatus;
+  /** False once the race is COMPLETED — its track is locked (NASCAR-041). */
+  canSwap: boolean;
+};
+
+export type ManageSchedule = {
+  leagueId: string;
+  leagueName: string;
+  rounds: ManageScheduleRound[];
+  /** Active series tracks not already used by a round — valid swap targets. */
+  availableTracks: TrackOption[];
+};
+
+/**
+ * Admin schedule-management view (NASCAR-041): every round plus the set of
+ * tracks available to swap in — the series pool minus tracks already used in
+ * this league (the no-repeat rule). Authorization is the page's responsibility
+ * (`requireLeagueRole` ADMIN). Null for an unknown league.
+ */
+export async function getManageSchedule(
+  leagueId: string,
+): Promise<ManageSchedule | null> {
+  const league = await prisma.league.findUnique({
+    where: { id: leagueId },
+    select: {
+      name: true,
+      series: true,
+      races: {
+        orderBy: { round: "asc" },
+        select: {
+          id: true,
+          round: true,
+          trackId: true,
+          scheduledAt: true,
+          status: true,
+          track: { select: { name: true, trackType: true } },
+        },
+      },
+    },
+  });
+  if (!league) return null;
+
+  const usedTrackIds = new Set(league.races.map((r) => r.trackId));
+  const pool = await prisma.track.findMany({
+    where: { active: true, series: { has: league.series } },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true, trackType: true },
+  });
+
+  return {
+    leagueId,
+    leagueName: league.name,
+    rounds: league.races.map((r) => ({
+      raceId: r.id,
+      round: r.round,
+      trackId: r.trackId,
+      trackName: r.track.name,
+      trackType: r.track.trackType,
+      scheduledAt: r.scheduledAt,
+      status: r.status,
+      canSwap: r.status !== RaceStatus.COMPLETED,
+    })),
+    availableTracks: pool.filter((t) => !usedTrackIds.has(t.id)),
+  };
+}
+
 export type RaceResultRow = {
   participantId: string;
   driverName: string;

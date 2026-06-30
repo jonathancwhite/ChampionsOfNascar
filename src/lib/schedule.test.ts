@@ -13,6 +13,7 @@ import {
   mulberry32,
   pickTracks,
   shuffle,
+  validateTrackSwap,
 } from "./schedule";
 
 const trackIds = (n: number) =>
@@ -139,4 +140,40 @@ test("generateSchedule is deterministic for a fixed seed", async () => {
     a.calls.createdData.map((r) => r.trackId),
     b.calls.createdData.map((r) => r.trackId),
   );
+});
+
+// --- Track swap rules (NASCAR-041) --------------------------------------------
+
+const okSwap = {
+  raceFound: true,
+  raceCompleted: false,
+  newTrackInSeries: true,
+  newTrackAlreadyUsed: false,
+};
+
+test("validateTrackSwap allows a valid swap", () => {
+  assert.deepEqual(validateTrackSwap(okSwap), { ok: true });
+});
+
+test("validateTrackSwap rejects an unknown race", () => {
+  const r = validateTrackSwap({ ...okSwap, raceFound: false });
+  assert.equal(r.ok, false);
+});
+
+test("validateTrackSwap blocks a completed race", () => {
+  const r = validateTrackSwap({ ...okSwap, raceCompleted: true });
+  assert.equal(r.ok, false);
+  assert.match(r.ok ? "" : r.error, /completed/i);
+});
+
+test("validateTrackSwap rejects a track outside the league's series", () => {
+  const r = validateTrackSwap({ ...okSwap, newTrackInSeries: false });
+  assert.equal(r.ok, false);
+  assert.match(r.ok ? "" : r.error, /series/i);
+});
+
+test("validateTrackSwap enforces the no-repeat rule", () => {
+  const r = validateTrackSwap({ ...okSwap, newTrackAlreadyUsed: true });
+  assert.equal(r.ok, false);
+  assert.match(r.ok ? "" : r.error, /already used/i);
 });

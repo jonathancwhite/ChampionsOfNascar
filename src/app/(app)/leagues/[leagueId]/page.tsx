@@ -151,12 +151,22 @@ export default async function LeaguePage({
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Schedule</CardTitle>
-          <CardDescription>
-            Randomized from the {SERIES_LABELS[league.series as SeriesValue]}{" "}
-            track pool. Dates are set by an admin.
-          </CardDescription>
+        <CardHeader className="flex-row items-center justify-between gap-2 space-y-0">
+          <div>
+            <CardTitle>Schedule</CardTitle>
+            <CardDescription>
+              Randomized from the {SERIES_LABELS[league.series as SeriesValue]}{" "}
+              track pool. Dates are set by an admin.
+            </CardDescription>
+          </div>
+          {isAdmin ? (
+            <Link
+              href={`/leagues/${league.id}/manage/schedule`}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              Manage tracks
+            </Link>
+          ) : null}
         </CardHeader>
         <CardContent>
           <ScheduleTable leagueId={league.id} rounds={schedule} now={now} />
