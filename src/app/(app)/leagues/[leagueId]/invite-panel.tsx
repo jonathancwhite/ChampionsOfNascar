@@ -1,12 +1,16 @@
 "use client";
 
-import { useActionState, useId, useState } from "react";
+import { useActionState, useId, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
-import { sendLeagueInvitesAction, type InviteState } from "./invite-actions";
+import {
+  regenerateJoinCodeAction,
+  sendLeagueInvitesAction,
+  type InviteState,
+} from "./invite-actions";
 
 const initialState: InviteState = {};
 
@@ -39,6 +43,39 @@ function CopyInviteLink({ inviteUrl }: { inviteUrl: string }) {
       >
         {copied ? "Copied!" : "Copy link"}
       </Button>
+    </div>
+  );
+}
+
+function RegenerateCode({ leagueId }: { leagueId: string }) {
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  return (
+    <div className="flex flex-col gap-1">
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        disabled={pending}
+        onClick={() => {
+          if (
+            !window.confirm(
+              "Regenerate the join code? The current code and any shared links stop working. Existing members keep their access.",
+            )
+          ) {
+            return;
+          }
+          setError(null);
+          startTransition(async () => {
+            const res = await regenerateJoinCodeAction(leagueId);
+            if (res.error) setError(res.error);
+          });
+        }}
+      >
+        {pending ? "Regenerating…" : "Regenerate"}
+      </Button>
+      {error ? <span className="text-destructive text-xs">{error}</span> : null}
     </div>
   );
 }
@@ -106,8 +143,11 @@ export function InvitePanel({
         <p className="text-muted-foreground mb-1.5 text-sm font-medium">
           Join code
         </p>
-        <div className="bg-muted inline-flex items-center rounded-lg px-4 py-2 font-mono text-2xl font-semibold tracking-[0.3em]">
-          {joinCode}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="bg-muted inline-flex items-center rounded-lg px-4 py-2 font-mono text-2xl font-semibold tracking-[0.3em]">
+            {joinCode}
+          </div>
+          <RegenerateCode leagueId={leagueId} />
         </div>
       </div>
 

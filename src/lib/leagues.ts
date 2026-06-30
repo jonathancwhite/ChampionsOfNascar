@@ -10,7 +10,9 @@ import { LeagueRole } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/db";
 import { classifyJoin, normalizeJoinCode } from "@/lib/join";
 import { LEAGUE_STATUSES, isValidStatusTransition } from "@/lib/league-status";
+import { log } from "@/lib/logger";
 import { pointsSchemeSchema } from "@/lib/points";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { generateSchedule } from "@/lib/schedule";
 import { LEAGUE_TIMEZONES } from "@/lib/timezone";
 import { SERIES_VALUES, type SeriesValue } from "@/lib/series";
@@ -196,6 +198,19 @@ export async function joinLeague(
   userId: string,
   rawCode: string,
 ): Promise<JoinLeagueResult> {
+  // Throttle join attempts per user so join codes can't be brute-force
+  // enumerated (NASCAR-082). Counts valid and invalid attempts alike.
+  const throttle = await checkRateLimit(`join:${userId}`, {
+    limit: 15,
+    windowMs: 60_000,
+  });
+  if (!throttle.allowed) {
+    return {
+      ok: false,
+      error: "Too many attempts. Please wait a minute and try again.",
+    };
+  }
+
   const code = normalizeJoinCode(rawCode);
   if (code.length === 0) {
     return { ok: false, error: "Enter a join code." };
@@ -205,6 +220,10 @@ export async function joinLeague(
     where: { joinCode: code },
     select: { id: true, status: true },
   });
+  if (!league) {
+    // Surface guessing attempts for monitoring (NASCAR-082).
+    log.warn("join.invalid_code", { userId });
+  }
 
   // A soft-removed membership (NASCAR-032) still exists, so re-joining must
   // reactivate that row rather than create a duplicate (the unique constraint
@@ -367,4 +386,41 @@ export async function updatePointsScheme(
     data: { pointsSystem: parsed.data },
   });
   return { ok: true };
+}
+
+export type RegenerateJoinCodeResult =
+  { ok: true; joinCode: string } | { ok: false; error: string };
+
+/**
+ * Regenerate a league's join code (NASCAR-082), invalidating the old code and
+ * any shared links. Existing members are unaffected (membership is keyed by
+ * userId, not the code). Retries on the rare collision. Authorization is the
+ * caller's responsibility.
+ */
+export async function regenerateJoinCode(
+  leagueId: string,
+): Promise<RegenerateJoinCodeResult> {
+  for (let attempt = 0; attempt < MAX_JOIN_CODE_ATTEMPTS; attempt++) {
+    const joinCode = newJoinCode();
+    try {
+      await prisma.league.update({
+        where: { id: leagueId },
+        data: { joinCode },
+      });
+      return { ok: true, joinCode };
+    } catch (error) {
+      if (isJoinCodeCollision(error)) continue; // regenerate and retry
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2025"
+      ) {
+        return { ok: false, error: "League not found." };
+      }
+      throw error;
+    }
+  }
+  return {
+    ok: false,
+    error: "Could not generate a new code. Please try again.",
+  };
 }

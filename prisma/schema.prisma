@@ -192,6 +192,16 @@ model RaceResult {
   participant RaceParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
 }
 
+/// Fixed-window rate-limit counter (NASCAR-082). One row per (key, window);
+/// serverless-safe since the count lives in the DB, not process memory.
+model RateLimit {
+  key         String
+  windowStart DateTime
+  count       Int      @default(0)
+
+  @@id([key, windowStart])
+}
+
 /// Observability record of a cron run (NASCAR-081), so the last run's status is
 /// queryable via the health endpoint.
 model CronRun {
