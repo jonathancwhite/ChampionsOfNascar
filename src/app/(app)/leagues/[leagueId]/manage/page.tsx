@@ -11,9 +11,11 @@ import {
 } from "@/components/ui/card";
 import { LeagueRole } from "@/generated/prisma/enums";
 import { requireLeagueRole } from "@/lib/auth";
-import { getLeagueSettings } from "@/lib/league-queries";
+import { getLeagueSettings, getPointsSettings } from "@/lib/league-queries";
+import { DEFAULT_SCHEME } from "@/lib/points";
 
 import { LeagueSettingsForm } from "./league-settings-form";
+import { PointsEditor } from "./points-editor";
 
 export const metadata: Metadata = {
   title: "League settings",
@@ -42,6 +44,8 @@ export default async function ManageLeaguePage({
     notFound();
   }
 
+  const points = await getPointsSettings(leagueId);
+
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
@@ -63,13 +67,34 @@ export default async function ManageLeaguePage({
         <CardHeader>
           <CardTitle>Settings</CardTitle>
           <CardDescription>
-            Points scoring is configured separately (coming soon).
+            Name, race length, reminders, and lifecycle status.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <LeagueSettingsForm settings={settings} />
         </CardContent>
       </Card>
+
+      {points ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Scoring</CardTitle>
+            <CardDescription>
+              Customize championship points. Default is 40-down (1st=40, 2nd=35,
+              3rd=34, −1 per position).
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <PointsEditor
+              leagueId={leagueId}
+              table={points.table}
+              bonuses={points.bonuses}
+              defaultTable={DEFAULT_SCHEME.table}
+              completedRaceCount={points.completedRaceCount}
+            />
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
   );
 }

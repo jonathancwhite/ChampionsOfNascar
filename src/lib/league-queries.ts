@@ -4,6 +4,7 @@
 
 import { LeagueRole, RaceStatus } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/db";
+import { resolveScheme } from "@/lib/points";
 import { computeStandings, type StandingEntry } from "@/lib/standings";
 
 /** Display name for a participant, AI or human, with sensible fallbacks. */
@@ -443,6 +444,9 @@ export type RaceDetail = {
   trackType: string | null;
   scheduledAt: Date | null;
   status: RaceStatus;
+  isAdmin: boolean;
+  /** Whether a participant field has been set (drives the admin CTAs). */
+  hasParticipants: boolean;
   results: RaceResultRow[];
 };
 
@@ -524,6 +528,203 @@ export async function getRaceDetail(
     trackType: race.track.trackType,
     scheduledAt: race.scheduledAt,
     status: race.status,
+    isAdmin: membership.role === LeagueRole.ADMIN,
+    hasParticipants: race.participants.length > 0,
     results,
+  };
+}
+
+export type PointsSettings = {
+  table: number[];
+  bonuses: { win: number; lapsLed: number };
+  /** Completed races whose points a scheme change would recompute (NASCAR-023). */
+  completedRaceCount: number;
+};
+
+/** Current points scheme + recompute scope for the admin editor (NASCAR-023). */
+export async function getPointsSettings(
+  leagueId: string,
+): Promise<PointsSettings | null> {
+  const league = await prisma.league.findUnique({
+    where: { id: leagueId },
+    select: { pointsSystem: true },
+  });
+  if (!league) return null;
+
+  const scheme = resolveScheme(league.pointsSystem);
+  const completedRaceCount = await prisma.race.count({
+    where: { leagueId, status: RaceStatus.COMPLETED },
+  });
+  return {
+    table: scheme.table,
+    bonuses: scheme.bonuses,
+    completedRaceCount,
+  };
+}
+
+export type ParticipantsEditorMember = {
+  membershipId: string;
+  name: string;
+  selected: boolean;
+};
+
+export type ParticipantsEditor = {
+  leagueId: string;
+  raceId: string;
+  round: number;
+  trackName: string;
+  status: RaceStatus;
+  members: ParticipantsEditorMember[];
+  aiEntries: { name: string; carNumber: number | null }[];
+};
+
+/**
+ * Data for the participant editor (NASCAR-060): current (non-removed) members
+ * with a flag for who's already in the race, plus existing AI entries. Only
+ * current members appear, so the picker respects roster changes (NASCAR-032).
+ * Null for an unknown race.
+ */
+export async function getRaceParticipantsEditor(
+  leagueId: string,
+  raceId: string,
+): Promise<ParticipantsEditor | null> {
+  const race = await prisma.race.findFirst({
+    where: { id: raceId, leagueId },
+    select: {
+      round: true,
+      status: true,
+      track: { select: { name: true } },
+      participants: {
+        select: {
+          membershipId: true,
+          isAi: true,
+          aiName: true,
+          carNumber: true,
+        },
+      },
+    },
+  });
+  if (!race) return null;
+
+  const members = await prisma.leagueMembership.findMany({
+    where: { leagueId, removedAt: null },
+    orderBy: [{ role: "asc" }, { createdAt: "asc" }],
+    select: { id: true, user: { select: { displayName: true } } },
+  });
+  const selected = new Set(
+    race.participants
+      .filter((p) => !p.isAi && p.membershipId)
+      .map((p) => p.membershipId as string),
+  );
+
+  return {
+    leagueId,
+    raceId,
+    round: race.round,
+    trackName: race.track.name,
+    status: race.status,
+    members: members.map((m) => ({
+      membershipId: m.id,
+      name: m.user.displayName?.trim() || "Member",
+      selected: selected.has(m.id),
+    })),
+    aiEntries: race.participants
+      .filter((p) => p.isAi)
+      .map((p) => ({ name: p.aiName ?? "", carNumber: p.carNumber })),
+  };
+}
+
+export type ResultEditorRow = {
+  participantId: string;
+  driverName: string;
+  isAi: boolean;
+  carNumber: number | null;
+  finishPos: number | null;
+  startPos: number | null;
+  lapsLed: number;
+  dnf: boolean;
+  status: string | null;
+};
+
+export type ResultsEditor = {
+  leagueId: string;
+  raceId: string;
+  round: number;
+  trackName: string;
+  status: RaceStatus;
+  rows: ResultEditorRow[];
+};
+
+/**
+ * Per-participant rows for the results form (NASCAR-061 entry / NASCAR-062
+ * edit), prefilled with any existing result. Ordered by finishing position
+ * (unscored rows last). Null for an unknown race.
+ */
+export async function getRaceResultsEditor(
+  leagueId: string,
+  raceId: string,
+): Promise<ResultsEditor | null> {
+  const race = await prisma.race.findFirst({
+    where: { id: raceId, leagueId },
+    select: {
+      round: true,
+      status: true,
+      track: { select: { name: true } },
+      participants: {
+        select: {
+          id: true,
+          isAi: true,
+          aiName: true,
+          carNumber: true,
+          user: { select: { displayName: true } },
+          membership: {
+            select: { user: { select: { displayName: true } } },
+          },
+          result: {
+            select: {
+              finishPos: true,
+              startPos: true,
+              lapsLed: true,
+              dnf: true,
+              status: true,
+            },
+          },
+        },
+      },
+    },
+  });
+  if (!race) return null;
+
+  const rows: ResultEditorRow[] = race.participants
+    .map((p) => ({
+      participantId: p.id,
+      driverName: driverName({
+        isAi: p.isAi,
+        aiName: p.aiName,
+        membershipDisplayName: p.membership?.user?.displayName,
+        userDisplayName: p.user?.displayName,
+      }),
+      isAi: p.isAi,
+      carNumber: p.carNumber,
+      finishPos: p.result?.finishPos ?? null,
+      startPos: p.result?.startPos ?? null,
+      lapsLed: p.result?.lapsLed ?? 0,
+      dnf: p.result?.dnf ?? false,
+      status: p.result?.status ?? null,
+    }))
+    .sort((a, b) => {
+      if (a.finishPos === null && b.finishPos === null) return 0;
+      if (a.finishPos === null) return 1;
+      if (b.finishPos === null) return -1;
+      return a.finishPos - b.finishPos;
+    });
+
+  return {
+    leagueId,
+    raceId,
+    round: race.round,
+    trackName: race.track.name,
+    status: race.status,
+    rows,
   };
 }

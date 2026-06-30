@@ -177,6 +177,10 @@ model RaceResult {
   dnf           Boolean  @default(false)
   /// Optional finish status note, e.g. "running" | "dnf" | "dns".
   status        String?
+  /// Lightweight edit audit (NASCAR-062): the User.id of the admin who last
+  /// entered/edited this result. Plain id (no relation) — a "who" note, paired
+  /// with updatedAt for "when". ponytail: a full audit log is overkill here.
+  lastEditedById String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

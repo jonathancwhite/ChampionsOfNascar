@@ -10,6 +10,7 @@ import { LeagueRole } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/db";
 import { classifyJoin, normalizeJoinCode } from "@/lib/join";
 import { LEAGUE_STATUSES, isValidStatusTransition } from "@/lib/league-status";
+import { pointsSchemeSchema } from "@/lib/points";
 import { generateSchedule } from "@/lib/schedule";
 import { SERIES_VALUES, type SeriesValue } from "@/lib/series";
 
@@ -316,5 +317,52 @@ export async function updateLeagueSettings(
     data: { name, lapsPercent, reminderLeadDays, status },
   });
 
+  return { ok: true };
+}
+
+/** Parse a free-text points table ("40, 35, 34 …") into a number array. */
+export function parsePointsTable(raw: string): number[] {
+  return raw
+    .split(/[\s,]+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length > 0)
+    .map(Number);
+}
+
+export type UpdatePointsResult = { ok: true } | { ok: false; error: string };
+
+/**
+ * Persist a league's custom points scheme (NASCAR-023). Builds a versioned
+ * scheme from the editor inputs and validates it (rejecting negatives / NaN /
+ * empty table) before storing it as JSON on `League.pointsSystem`. Authorization
+ * is the caller's responsibility; a league-wide recompute is offered separately.
+ */
+export async function updatePointsScheme(
+  leagueId: string,
+  input: { table: number[]; win: number; lapsLed: number },
+): Promise<UpdatePointsResult> {
+  const parsed = pointsSchemeSchema.safeParse({
+    version: 1,
+    table: input.table,
+    bonuses: { win: input.win, lapsLed: input.lapsLed },
+  });
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error:
+        "Points must be whole numbers ≥ 0, with at least one position in the table.",
+    };
+  }
+
+  const league = await prisma.league.findUnique({
+    where: { id: leagueId },
+    select: { id: true },
+  });
+  if (!league) return { ok: false, error: "League not found." };
+
+  await prisma.league.update({
+    where: { id: leagueId },
+    data: { pointsSystem: parsed.data },
+  });
   return { ok: true };
 }

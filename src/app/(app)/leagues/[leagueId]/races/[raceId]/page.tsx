@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { LocalDateTime } from "@/components/local-date-time";
 import { RaceStatusBadge } from "@/components/race-status-badge";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -11,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { RaceStatus } from "@/generated/prisma/enums";
 import {
   Table,
   TableBody,
@@ -64,6 +66,36 @@ export default async function RacePage({
           <LocalDateTime value={race.scheduledAt} />
         </p>
       </div>
+
+      {race.isAdmin ? (
+        <div className="flex flex-wrap gap-2">
+          {race.status === RaceStatus.COMPLETED ? (
+            <Link
+              href={`/leagues/${race.leagueId}/races/${raceId}/results`}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              Edit results
+            </Link>
+          ) : (
+            <>
+              <Link
+                href={`/leagues/${race.leagueId}/races/${raceId}/manage`}
+                className={buttonVariants({ variant: "outline", size: "sm" })}
+              >
+                Manage participants
+              </Link>
+              {race.hasParticipants ? (
+                <Link
+                  href={`/leagues/${race.leagueId}/races/${raceId}/results`}
+                  className={buttonVariants({ size: "sm" })}
+                >
+                  Enter results
+                </Link>
+              ) : null}
+            </>
+          )}
+        </div>
+      ) : null}
 
       <Card>
         <CardHeader>
