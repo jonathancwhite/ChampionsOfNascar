@@ -37,6 +37,7 @@ export async function updateLeagueSettingsAction(
     name: String(formData.get("name") ?? ""),
     lapsPercent: String(formData.get("lapsPercent") ?? ""),
     reminderLeadDays: String(formData.get("reminderLeadDays") ?? ""),
+    timezone: String(formData.get("timezone") ?? ""),
     status: String(formData.get("status") ?? ""),
   });
 

@@ -70,6 +70,7 @@ export default async function ManageSchedulePage({
             leagueId={schedule.leagueId}
             rounds={schedule.rounds}
             availableTracks={schedule.availableTracks}
+            timezoneLabel={schedule.timezoneLabel}
           />
         </CardContent>
       </Card>

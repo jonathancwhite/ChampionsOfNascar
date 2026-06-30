@@ -39,6 +39,7 @@ enum EmailType {
   RACE_SCHEDULED
   RACE_REMINDER
   LEAGUE_INVITE
+  RACE_CANCELLED
 }
 
 // ---------------------------------------------------------------------------
@@ -72,6 +73,10 @@ model League {
   /// Effective points scheme; null = default 40-down (see src/lib/points.ts).
   pointsSystem     Json?
   reminderLeadDays Int        @default(5)
+  /// IANA timezone for race scheduling (NASCAR-050): admins enter race times in
+  /// this zone, and the reminder cron computes the "N days before" boundary on
+  /// the race's local date here to avoid off-by-one. See src/lib/timezone.ts.
+  timezone         String     @default("America/New_York")
   /// Lifecycle: "setup" | "active" | "finished".
   status           String     @default("setup")
   creatorId        String

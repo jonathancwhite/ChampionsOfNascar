@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { allowedNextStatuses, LEAGUE_STATUS_LABELS } from "@/lib/league-status";
 import type { LeagueSettings } from "@/lib/league-queries";
 import { SERIES_LABELS, type SeriesValue } from "@/lib/series";
+import { LEAGUE_TIMEZONES, TIMEZONE_LABELS } from "@/lib/timezone";
 import { cn } from "@/lib/utils";
 
 import { updateLeagueSettingsAction, type ManageLeagueState } from "./actions";
@@ -29,8 +30,11 @@ export function LeagueSettingsForm({ settings }: { settings: LeagueSettings }) {
     name: useId(),
     laps: useId(),
     reminder: useId(),
+    timezone: useId(),
     status: useId(),
   };
+  const selectClass =
+    "border-input focus-visible:border-ring focus-visible:ring-ring/50 dark:bg-input/30 h-8 w-full rounded-lg border bg-transparent px-2.5 py-1 text-base transition-colors outline-none focus-visible:ring-3 md:text-sm";
   const fieldErrors = state.fieldErrors ?? {};
   const statusOptions = allowedNextStatuses(settings.status);
 
@@ -110,6 +114,31 @@ export function LeagueSettingsForm({ settings }: { settings: LeagueSettings }) {
 
       <div>
         <label
+          htmlFor={ids.timezone}
+          className="mb-1.5 block text-sm font-medium"
+        >
+          Race timezone
+        </label>
+        <select
+          id={ids.timezone}
+          name="timezone"
+          defaultValue={settings.timezone}
+          className={cn(selectClass)}
+        >
+          {LEAGUE_TIMEZONES.map((tz) => (
+            <option key={tz} value={tz}>
+              {TIMEZONE_LABELS[tz]}
+            </option>
+          ))}
+        </select>
+        <FieldNote
+          error={fieldErrors.timezone}
+          hint="Race times are entered and reminders are timed in this zone"
+        />
+      </div>
+
+      <div>
+        <label
           htmlFor={ids.status}
           className="mb-1.5 block text-sm font-medium"
         >
@@ -119,9 +148,7 @@ export function LeagueSettingsForm({ settings }: { settings: LeagueSettings }) {
           id={ids.status}
           name="status"
           defaultValue={settings.status}
-          className={cn(
-            "border-input focus-visible:border-ring focus-visible:ring-ring/50 dark:bg-input/30 h-8 w-full rounded-lg border bg-transparent px-2.5 py-1 text-base transition-colors outline-none focus-visible:ring-3 md:text-sm",
-          )}
+          className={cn(selectClass)}
         >
           {statusOptions.map((value) => (
             <option key={value} value={value}>

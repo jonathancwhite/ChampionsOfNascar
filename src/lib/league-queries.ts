@@ -6,6 +6,11 @@ import { LeagueRole, RaceStatus } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/db";
 import { resolveScheme } from "@/lib/points";
 import { computeStandings, type StandingEntry } from "@/lib/standings";
+import {
+  TIMEZONE_LABELS,
+  toZonedInputValue,
+  type LeagueTimezone,
+} from "@/lib/timezone";
 
 /** Display name for a participant, AI or human, with sensible fallbacks. */
 function driverName(args: {
@@ -324,6 +329,7 @@ export type LeagueSettings = {
   numberOfRaces: number;
   lapsPercent: number;
   reminderLeadDays: number;
+  timezone: string;
   status: string;
 };
 
@@ -340,6 +346,7 @@ export async function getLeagueSettings(
       numberOfRaces: true,
       lapsPercent: true,
       reminderLeadDays: true,
+      timezone: true,
       status: true,
     },
   });
@@ -358,24 +365,30 @@ export type ManageScheduleRound = {
   trackName: string;
   trackType: string | null;
   scheduledAt: Date | null;
+  /** `scheduledAt` as a datetime-local value in the league zone, for the editor. */
+  scheduledInput: string;
   status: RaceStatus;
   /** False once the race is COMPLETED — its track is locked (NASCAR-041). */
   canSwap: boolean;
+  /** Date is editable only while SCHEDULED (NASCAR-050). */
+  canEditDate: boolean;
 };
 
 export type ManageSchedule = {
   leagueId: string;
   leagueName: string;
+  timezone: string;
+  timezoneLabel: string;
   rounds: ManageScheduleRound[];
   /** Active series tracks not already used by a round — valid swap targets. */
   availableTracks: TrackOption[];
 };
 
 /**
- * Admin schedule-management view (NASCAR-041): every round plus the set of
- * tracks available to swap in — the series pool minus tracks already used in
- * this league (the no-repeat rule). Authorization is the page's responsibility
- * (`requireLeagueRole` ADMIN). Null for an unknown league.
+ * Admin schedule-management view (NASCAR-041 swap, NASCAR-050 dates): every round
+ * plus the set of tracks available to swap in (series pool minus used tracks —
+ * the no-repeat rule) and the league timezone for date entry. Authorization is
+ * the page's responsibility (`requireLeagueRole` ADMIN). Null for an unknown league.
  */
 export async function getManageSchedule(
   leagueId: string,
@@ -385,6 +398,7 @@ export async function getManageSchedule(
     select: {
       name: true,
       series: true,
+      timezone: true,
       races: {
         orderBy: { round: "asc" },
         select: {
@@ -410,6 +424,9 @@ export async function getManageSchedule(
   return {
     leagueId,
     leagueName: league.name,
+    timezone: league.timezone,
+    timezoneLabel:
+      TIMEZONE_LABELS[league.timezone as LeagueTimezone] ?? league.timezone,
     rounds: league.races.map((r) => ({
       raceId: r.id,
       round: r.round,
@@ -417,8 +434,12 @@ export async function getManageSchedule(
       trackName: r.track.name,
       trackType: r.track.trackType,
       scheduledAt: r.scheduledAt,
+      scheduledInput: r.scheduledAt
+        ? toZonedInputValue(r.scheduledAt, league.timezone)
+        : "",
       status: r.status,
       canSwap: r.status !== RaceStatus.COMPLETED,
+      canEditDate: r.status === RaceStatus.SCHEDULED,
     })),
     availableTracks: pool.filter((t) => !usedTrackIds.has(t.id)),
   };

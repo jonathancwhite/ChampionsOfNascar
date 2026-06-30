@@ -12,6 +12,7 @@ import { classifyJoin, normalizeJoinCode } from "@/lib/join";
 import { LEAGUE_STATUSES, isValidStatusTransition } from "@/lib/league-status";
 import { pointsSchemeSchema } from "@/lib/points";
 import { generateSchedule } from "@/lib/schedule";
+import { LEAGUE_TIMEZONES } from "@/lib/timezone";
 import { SERIES_VALUES, type SeriesValue } from "@/lib/series";
 
 // Unambiguous uppercase alphabet (no 0/O/1/I/L) — join codes are typed by hand
@@ -270,6 +271,7 @@ export const updateLeagueSettingsSchema = z.object({
     .int("Enter a whole number.")
     .min(0, "Cannot be negative.")
     .max(30, "Maximum 30 days."),
+  timezone: z.enum(LEAGUE_TIMEZONES),
   status: z.enum(LEAGUE_STATUSES),
 });
 
@@ -293,7 +295,7 @@ export async function updateLeagueSettings(
   if (!parsed.success) {
     return { ok: false, fieldErrors: firstFieldErrors(parsed.error) };
   }
-  const { name, lapsPercent, reminderLeadDays, status } = parsed.data;
+  const { name, lapsPercent, reminderLeadDays, timezone, status } = parsed.data;
 
   const league = await prisma.league.findUnique({
     where: { id: leagueId },
@@ -314,7 +316,7 @@ export async function updateLeagueSettings(
 
   await prisma.league.update({
     where: { id: leagueId },
-    data: { name, lapsPercent, reminderLeadDays, status },
+    data: { name, lapsPercent, reminderLeadDays, timezone, status },
   });
 
   return { ok: true };
