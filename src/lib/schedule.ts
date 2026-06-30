@@ -164,3 +164,92 @@ export async function regenerateSchedule(
     );
   });
 }
+
+export type SwapResult = { ok: true } | { ok: false; error: string };
+
+/**
+ * Pure rule check for a track swap (NASCAR-041). Kept separate from the DB work
+ * so the series / no-repeat / completed-race guards unit-test without a database.
+ * The caller resolves each boolean from queries and feeds them here.
+ */
+export function validateTrackSwap(args: {
+  raceFound: boolean;
+  raceCompleted: boolean;
+  newTrackInSeries: boolean;
+  newTrackAlreadyUsed: boolean;
+}): SwapResult {
+  if (!args.raceFound) {
+    return { ok: false, error: "Race not found in this league." };
+  }
+  if (args.raceCompleted) {
+    return {
+      ok: false,
+      error: "This race is completed — its track can't be changed.",
+    };
+  }
+  if (!args.newTrackInSeries) {
+    return { ok: false, error: "That track isn't in this league's series." };
+  }
+  if (args.newTrackAlreadyUsed) {
+    return { ok: false, error: "That track is already used in this league." };
+  }
+  return { ok: true };
+}
+
+export type SwapTrackArgs = {
+  leagueId: string;
+  raceId: string;
+  newTrackId: string;
+};
+
+/**
+ * Swap a scheduled race's track (NASCAR-041). Updates only `trackId`; `round`
+ * and `scheduledAt` are preserved. Enforced: the race exists in the league and
+ * is not COMPLETED, and the replacement is an active track in the league's
+ * series that isn't already used by another round (no-repeat). The DB client is
+ * injected so this module stays runtime-pure. Authorization is the caller's job.
+ */
+export async function swapTrack(
+  db: PrismaClient,
+  { leagueId, raceId, newTrackId }: SwapTrackArgs,
+): Promise<SwapResult> {
+  return db.$transaction(async (tx) => {
+    const race = await tx.race.findFirst({
+      where: { id: raceId, leagueId },
+      select: {
+        trackId: true,
+        status: true,
+        league: { select: { series: true } },
+      },
+    });
+    const newTrack = await tx.track.findUnique({
+      where: { id: newTrackId },
+      select: { series: true, active: true },
+    });
+    const collision = await tx.race.findFirst({
+      where: { leagueId, trackId: newTrackId, NOT: { id: raceId } },
+      select: { id: true },
+    });
+
+    const decision = validateTrackSwap({
+      raceFound: race !== null,
+      raceCompleted: race?.status === "COMPLETED",
+      newTrackInSeries:
+        race !== null &&
+        newTrack !== null &&
+        newTrack.active &&
+        newTrack.series.includes(race.league.series),
+      newTrackAlreadyUsed: collision !== null,
+    });
+    if (!decision.ok) return decision;
+
+    // Same track selected: nothing to do (idempotent).
+    if (race!.trackId !== newTrackId) {
+      await tx.race.update({
+        where: { id: raceId },
+        data: { trackId: newTrackId },
+      });
+    }
+    return { ok: true };
+  });
+}
