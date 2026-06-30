@@ -6,6 +6,7 @@
 
 import { RaceStatus } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/db";
+import { notifyRaceScheduled } from "@/lib/race-notifications";
 import { zonedWallTimeToUtc } from "@/lib/timezone";
 
 export type SetRaceDateResult =
@@ -45,5 +46,16 @@ export async function setRaceDate(
     where: { id: raceId },
     data: { scheduledAt },
   });
+
+  // Setting/changing the date notifies members (NASCAR-051); clearing it (TBD)
+  // does not. A notification problem must not fail the date change.
+  if (scheduledAt) {
+    try {
+      await notifyRaceScheduled(raceId);
+    } catch (error) {
+      console.error(`[setRaceDate] notification failed for ${raceId}:`, error);
+    }
+  }
+
   return { ok: true, raceId, scheduledAt };
 }
