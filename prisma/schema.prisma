@@ -92,6 +92,10 @@ model LeagueMembership {
   /// Per-league email opt-out (NASCAR-053). Notification senders skip members
   /// with this false; toggled via the signed unsubscribe link.
   notifyByEmail Boolean @default(true)
+  /// Soft-delete for roster management (NASCAR-032). Non-null = removed/left;
+  /// the row is kept so historical RaceParticipant/RaceResult links survive for
+  /// standings, while access gates filter `removedAt: null`.
+  removedAt DateTime?
   createdAt DateTime   @default(now())
 
   league       League            @relation(fields: [leagueId], references: [id], onDelete: Cascade)

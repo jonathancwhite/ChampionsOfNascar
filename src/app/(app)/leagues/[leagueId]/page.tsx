@@ -26,6 +26,7 @@ import { buildInviteUrl } from "@/lib/invites";
 import { SERIES_LABELS, type SeriesValue } from "@/lib/series";
 
 import { InvitePanel } from "./invite-panel";
+import { RosterManager } from "./roster-manager";
 
 export const metadata: Metadata = {
   title: "League",
@@ -171,31 +172,11 @@ export default async function LeaguePage({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Player</TableHead>
-                <TableHead className="text-right">Role</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {members.map((member) => (
-                <TableRow key={member.membershipId}>
-                  <TableCell className="font-medium">
-                    {member.name}
-                    {member.isYou ? (
-                      <span className="text-muted-foreground ml-2 text-xs">
-                        (you)
-                      </span>
-                    ) : null}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {member.role === "ADMIN" ? "Admin" : "Member"}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <RosterManager
+            leagueId={league.id}
+            members={members}
+            viewerIsAdmin={isAdmin}
+          />
         </CardContent>
       </Card>
     </div>

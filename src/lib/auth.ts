@@ -76,9 +76,12 @@ export async function requireLeagueRole(
 
   const membership = await prisma.leagueMembership.findUnique({
     where: { leagueId_userId: { leagueId, userId: user.id } },
-    select: { id: true, role: true },
+    select: { id: true, role: true, removedAt: true },
   });
-  if (!membership) return { ok: false, reason: "not-member" };
+  // Removed/left members (NASCAR-032) are treated as non-members — access revoked.
+  if (!membership || membership.removedAt) {
+    return { ok: false, reason: "not-member" };
+  }
 
   if (role === LeagueRole.ADMIN && membership.role !== LeagueRole.ADMIN) {
     return { ok: false, reason: "insufficient-role" };

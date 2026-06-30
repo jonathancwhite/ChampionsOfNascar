@@ -29,8 +29,10 @@ export async function requireLeagueMembership(
   leagueId: string,
   userId: string,
 ) {
-  return prisma.leagueMembership.findUnique({
-    where: { leagueId_userId: { leagueId, userId } },
+  // findFirst (not findUnique) so we can filter out soft-removed memberships
+  // (NASCAR-032): a removed member resolves to null and is denied like a non-member.
+  return prisma.leagueMembership.findFirst({
+    where: { leagueId, userId, removedAt: null },
     select: { id: true, role: true },
   });
 }
@@ -52,7 +54,7 @@ export async function getDashboardLeagues(
   now: Date,
 ): Promise<DashboardLeague[]> {
   const memberships = await prisma.leagueMembership.findMany({
-    where: { userId },
+    where: { userId, removedAt: null },
     orderBy: { createdAt: "desc" },
     select: {
       role: true,
@@ -118,6 +120,8 @@ export type LeagueMember = {
   name: string;
   role: LeagueRole;
   isYou: boolean;
+  /** League owner (creator). Cannot be removed; must transfer before leaving. */
+  isCreator: boolean;
 };
 
 export type LeagueOverview = {
@@ -159,6 +163,7 @@ export async function getLeagueOverview(
       lapsPercent: true,
       status: true,
       joinCode: true,
+      creatorId: true,
       races: {
         orderBy: { round: "asc" },
         select: {
@@ -170,6 +175,7 @@ export async function getLeagueOverview(
         },
       },
       memberships: {
+        where: { removedAt: null },
         orderBy: [{ role: "asc" }, { createdAt: "asc" }],
         select: {
           id: true,
@@ -208,6 +214,7 @@ export async function getLeagueOverview(
         m.user.displayName?.trim() || (m.userId === userId ? "You" : "Member"),
       role: m.role,
       isYou: m.userId === userId,
+      isCreator: m.userId === league.creatorId,
     })),
     standings: await getStandings(leagueId),
   };
@@ -292,7 +299,7 @@ export async function getNotifiableMembers(
   leagueId: string,
 ): Promise<NotifiableMember[]> {
   const memberships = await prisma.leagueMembership.findMany({
-    where: { leagueId, notifyByEmail: true },
+    where: { leagueId, notifyByEmail: true, removedAt: null },
     select: {
       id: true,
       userId: true,

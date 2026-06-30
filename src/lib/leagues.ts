@@ -204,17 +204,20 @@ export async function joinLeague(
     select: { id: true, status: true },
   });
 
-  const alreadyMember = league
-    ? (await prisma.leagueMembership.findUnique({
+  // A soft-removed membership (NASCAR-032) still exists, so re-joining must
+  // reactivate that row rather than create a duplicate (the unique constraint
+  // would reject it). Only a present, non-removed row counts as "already member".
+  const existing = league
+    ? await prisma.leagueMembership.findUnique({
         where: { leagueId_userId: { leagueId: league.id, userId } },
-        select: { id: true },
-      })) !== null
-    : false;
+        select: { id: true, removedAt: true },
+      })
+    : null;
 
   const decision = classifyJoin({
     leagueExists: league !== null,
     status: league?.status,
-    alreadyMember,
+    alreadyMember: existing !== null && existing.removedAt === null,
   });
 
   switch (decision.kind) {
@@ -224,6 +227,15 @@ export async function joinLeague(
       return { ok: true, leagueId: league!.id, alreadyMember: true };
     case "join":
       break;
+  }
+
+  // Rejoining: clear the soft-delete and reset to MEMBER.
+  if (existing) {
+    await prisma.leagueMembership.update({
+      where: { id: existing.id },
+      data: { removedAt: null, role: LeagueRole.MEMBER },
+    });
+    return { ok: true, leagueId: league!.id, alreadyMember: false };
   }
 
   try {
