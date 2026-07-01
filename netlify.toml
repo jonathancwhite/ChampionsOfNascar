@@ -1,0 +1,15 @@
+# Netlify deploy config. The Next.js runtime (@netlify/plugin-nextjs) is
+# auto-installed on framework detection and handles App Router SSR + API routes,
+# so this only pins the build command and Node version. The reminder cron lives
+# in netlify/functions/race-reminders.mts.
+#
+# Migrations are NOT run here (unlike vercel.json) — apply them out-of-band with
+# `DIRECT_URL=... npm run db:deploy` before/after deploying. See DEPLOYMENT.md.
+[build]
+  command = "next build"
+  # Next.js output dir. Without this, publish defaults to the repo root and the
+  # Next.js runtime errors ("publish directory cannot be the same as base").
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "22"

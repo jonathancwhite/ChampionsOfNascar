@@ -101,3 +101,21 @@ Manual cron trigger:
 ```bash
 curl -H "Authorization: Bearer $CRON_SECRET" https://<app>/api/cron/race-reminders
 ```
+
+## Deploying on Netlify (alternative)
+
+The app also runs on Netlify — only two things differ from the Vercel steps
+above; everything else (env vars in steps 2–7, DB, Clerk, Resend) is identical.
+
+1. **Build + runtime** — `netlify.toml` pins `next build` and `publish = ".next"`
+   (the runtime rejects a repo-root publish dir). Netlify auto-installs its
+   Next.js runtime (`@netlify/plugin-nextjs`) on detection. Unlike Vercel, the
+   build does **not** run `prisma migrate deploy` — apply migrations out-of-band
+   (`DIRECT_URL=... npm run db:deploy`, see step 3) before the app relies on new
+   schema.
+2. **Cron** — Netlify has no `vercel.json`-style cron, so
+   `netlify/functions/race-reminders.mts` is a Scheduled Function that calls the
+   **unchanged** `/api/cron/race-reminders` route with `Authorization: Bearer
+$CRON_SECRET` on the same `0 13 * * *` schedule. It reads the site URL from
+   Netlify's auto-injected `URL` (falling back to `NEXT_PUBLIC_APP_URL`), so no
+   extra env var is needed beyond the ones in step 2.
