@@ -1,10 +1,16 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 import { LeagueRole } from "@/generated/prisma/enums";
 import { requireLeagueRole } from "@/lib/auth";
-import { updateLeagueSettings } from "@/lib/leagues";
+import { prisma } from "@/lib/db";
+import {
+  deleteLeagueDeniedMessage,
+  isDeleteConfirmationValid,
+} from "@/lib/league-delete";
+import { deleteLeague, updateLeagueSettings } from "@/lib/leagues";
 
 export type ManageLeagueState = {
   ok?: boolean;
@@ -48,4 +54,40 @@ export async function updateLeagueSettingsAction(
   revalidatePath(`/leagues/${leagueId}`);
   revalidatePath(`/leagues/${leagueId}/manage`);
   return { ok: true };
+}
+
+export type DeleteLeagueState = { error?: string };
+
+/**
+ * Permanently delete a league (NASCAR-087). Requires ADMIN, a typed name match,
+ * then hard-deletes with cascade. Redirects to the dashboard on success.
+ */
+export async function deleteLeagueAction(
+  leagueId: string,
+  confirmName: string,
+): Promise<DeleteLeagueState> {
+  const authz = await requireLeagueRole(leagueId, LeagueRole.ADMIN);
+  if (!authz.ok) {
+    return { error: deleteLeagueDeniedMessage(authz.reason) };
+  }
+
+  const league = await prisma.league.findUnique({
+    where: { id: leagueId },
+    select: { name: true },
+  });
+  if (!league) {
+    return { error: "League not found." };
+  }
+
+  if (!isDeleteConfirmationValid(confirmName, league.name)) {
+    return { error: "League name doesn't match." };
+  }
+
+  const result = await deleteLeague(leagueId);
+  if (!result.ok) {
+    return { error: result.error };
+  }
+
+  revalidatePath("/dashboard");
+  redirect("/dashboard");
 }

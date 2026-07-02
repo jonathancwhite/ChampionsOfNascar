@@ -15,6 +15,7 @@ import { getLeagueSettings, getPointsSettings } from "@/lib/league-queries";
 import { DEFAULT_SCHEME } from "@/lib/points";
 
 import { LeagueSettingsForm } from "./league-settings-form";
+import { DeleteLeagueSection } from "./delete-league-section";
 import { PointsEditor } from "./points-editor";
 
 export const metadata: Metadata = {
@@ -95,6 +96,18 @@ export default async function ManageLeaguePage({
           </CardContent>
         </Card>
       ) : null}
+
+      <Card className="border-destructive/40">
+        <CardHeader>
+          <CardTitle className="text-destructive">Danger zone</CardTitle>
+          <CardDescription>
+            Irreversible actions for this league.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <DeleteLeagueSection leagueId={leagueId} leagueName={settings.name} />
+        </CardContent>
+      </Card>
     </div>
   );
 }
