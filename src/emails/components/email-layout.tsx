@@ -113,7 +113,7 @@ export const text = {
     margin: "0 0 16px",
   },
   button: {
-    backgroundColor: "#0a0a0a",
+    backgroundColor: "#4169E1",
     borderRadius: "8px",
     color: "#ffffff",
     display: "inline-block",

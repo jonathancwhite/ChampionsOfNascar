@@ -12,7 +12,7 @@ export default function Home() {
       <PublicHeader />
       <main className="flex flex-1 flex-col items-center justify-center px-6 py-24 text-center">
         <div className="bg-muted text-muted-foreground mb-6 flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium">
-          <Flag className="size-4" />
+          <Flag className="text-primary size-4" />
           Built for NASCAR 25
         </div>
 

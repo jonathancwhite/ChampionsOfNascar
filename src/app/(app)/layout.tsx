@@ -27,7 +27,7 @@ export default async function AppLayout({
             href="/dashboard"
             className="flex items-center gap-2 font-semibold"
           >
-            <Flag className="size-5" />
+            <Flag className="text-primary size-5" />
             Champions of NASCAR
           </Link>
           {/* Sign-out lives in the UserButton menu; the post-sign-out
@@ -35,7 +35,7 @@ export default async function AppLayout({
           <nav className="ml-auto flex items-center gap-4">
             <Link
               href="/profile"
-              className="text-muted-foreground hover:text-foreground text-sm font-medium"
+              className="text-muted-foreground hover:text-primary text-sm font-medium transition-colors"
             >
               My career
             </Link>
