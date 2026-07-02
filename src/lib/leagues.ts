@@ -427,22 +427,6 @@ export async function regenerateJoinCode(
 
 export type DeleteLeagueResult = { ok: true } | { ok: false; error: string };
 
-/** Maps auth failure reasons to user-facing copy for delete-league (NASCAR-087). */
-export function deleteLeagueDeniedMessage(
-  reason: "unauthenticated" | string,
-): string {
-  if (reason === "unauthenticated") return "You must be signed in.";
-  return "Only admins can delete this league.";
-}
-
-/** Server-side guard: typed confirmation must exactly match the league name. */
-export function isDeleteConfirmationValid(
-  typed: string,
-  leagueName: string,
-): boolean {
-  return typed.trim() === leagueName.trim();
-}
-
 /**
  * Permanently delete a league and all dependent rows (NASCAR-087). Prisma
  * cascades races, memberships, results, and email logs. Hard delete for v1;

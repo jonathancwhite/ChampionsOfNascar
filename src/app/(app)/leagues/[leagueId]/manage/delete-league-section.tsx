@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { isDeleteConfirmationValid } from "@/lib/leagues";
+import { isDeleteConfirmationValid } from "@/lib/league-delete";
 
 import { deleteLeagueAction } from "./actions";
 

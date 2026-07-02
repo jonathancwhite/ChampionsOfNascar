@@ -7,11 +7,10 @@ import { LeagueRole } from "@/generated/prisma/enums";
 import { requireLeagueRole } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import {
-  deleteLeague,
   deleteLeagueDeniedMessage,
   isDeleteConfirmationValid,
-  updateLeagueSettings,
-} from "@/lib/leagues";
+} from "@/lib/league-delete";
+import { deleteLeague, updateLeagueSettings } from "@/lib/leagues";
 
 export type ManageLeagueState = {
   ok?: boolean;
