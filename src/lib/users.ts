@@ -6,6 +6,7 @@
 //   - the Clerk backend user from `currentUser()` (camelCase) — see
 //     `getOrCreateCurrentUser` in src/lib/auth.ts.
 
+import { clerkClient } from "@clerk/nextjs/server";
 import type { UserJSON } from "@clerk/nextjs/server";
 
 import { prisma } from "@/lib/db";
@@ -46,10 +47,39 @@ export function mapWebhookUser(data: UserJSON): LocalUserInput {
 /** Idempotent: upsert keyed on the unique `clerkId`, so replays don't dup. */
 export async function upsertLocalUser(input: LocalUserInput) {
   const { clerkId, email, displayName, imageUrl } = input;
+  const incomingName = displayName?.trim() || null;
   return prisma.user.upsert({
     where: { clerkId },
-    create: { clerkId, email, displayName, imageUrl },
-    update: { email, displayName, imageUrl },
+    create: { clerkId, email, displayName: incomingName, imageUrl },
+    // Preserve a locally-set name when Clerk still has no usable display name
+    // (e.g. webhook lag or user.updated with empty first/last). Incoming
+    // non-blank names always win so Clerk remains source of truth after sync.
+    update: {
+      email,
+      imageUrl,
+      ...(incomingName ? { displayName: incomingName } : {}),
+    },
+  });
+}
+
+/**
+ * Persist a user-chosen display name locally and in Clerk (NASCAR-086). Clerk
+ * is updated first so the next webhook/user sync does not clobber the local row.
+ */
+export async function updateUserDisplayName(
+  userId: string,
+  clerkId: string,
+  displayName: string,
+) {
+  const client = await clerkClient();
+  await client.users.updateUser(clerkId, {
+    firstName: displayName,
+    lastName: "",
+  });
+
+  return prisma.user.update({
+    where: { id: userId },
+    data: { displayName },
   });
 }
 

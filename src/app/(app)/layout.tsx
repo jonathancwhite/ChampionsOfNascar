@@ -2,13 +2,22 @@ import Link from "next/link";
 import { Flag } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
 
+import { DisplayNamePrompt } from "@/components/display-name-prompt";
+import { getOrCreateCurrentUser } from "@/lib/auth";
+import { hasUsableDisplayName } from "@/lib/display-name";
+
 // Shared shell for authenticated pages. Route protection is enforced by
 // src/middleware.ts (NASCAR-010); reaching this layout implies a signed-in user.
-export default function AppLayout({
+export default async function AppLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const user = await getOrCreateCurrentUser();
+  const needsDisplayName = user
+    ? !hasUsableDisplayName(user.displayName)
+    : false;
+
   return (
     <div className="flex min-h-full flex-col">
       <header className="border-border bg-background sticky top-0 z-10 border-b">
@@ -36,6 +45,7 @@ export default function AppLayout({
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">
         {children}
       </main>
+      {needsDisplayName ? <DisplayNamePrompt /> : null}
     </div>
   );
 }
