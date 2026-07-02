@@ -4,7 +4,7 @@ import { UserButton } from "@clerk/nextjs";
 
 import { DisplayNamePrompt } from "@/components/display-name-prompt";
 import { getOrCreateCurrentUser } from "@/lib/auth";
-import { hasUsableDisplayName } from "@/lib/users";
+import { hasUsableDisplayName } from "@/lib/display-name";
 
 // Shared shell for authenticated pages. Route protection is enforced by
 // src/middleware.ts (NASCAR-010); reaching this layout implies a signed-in user.

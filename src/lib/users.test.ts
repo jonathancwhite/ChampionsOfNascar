@@ -7,7 +7,7 @@ import {
   DISPLAY_NAME_MAX_LENGTH,
   hasUsableDisplayName,
   validateDisplayName,
-} from "./users";
+} from "./display-name";
 
 test("hasUsableDisplayName rejects null, blank, and whitespace-only", () => {
   assert.equal(hasUsableDisplayName(null), false);

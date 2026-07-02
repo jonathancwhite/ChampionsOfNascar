@@ -11,37 +11,12 @@ import type { UserJSON } from "@clerk/nextjs/server";
 
 import { prisma } from "@/lib/db";
 
-export const DISPLAY_NAME_MAX_LENGTH = 50;
-
 export type LocalUserInput = {
   clerkId: string;
   email: string;
   displayName: string | null;
   imageUrl: string | null;
 };
-
-/** True when the stored name is non-empty after trim. */
-export function hasUsableDisplayName(name: string | null | undefined): boolean {
-  return Boolean(name?.trim());
-}
-
-export type ValidateDisplayNameResult =
-  { ok: true; name: string } | { ok: false; error: string };
-
-/** Validates a raw display-name input for the first-login prompt (NASCAR-086). */
-export function validateDisplayName(raw: string): ValidateDisplayNameResult {
-  const name = raw.trim();
-  if (!name) {
-    return { ok: false, error: "Display name is required." };
-  }
-  if (name.length > DISPLAY_NAME_MAX_LENGTH) {
-    return {
-      ok: false,
-      error: `Display name must be ${DISPLAY_NAME_MAX_LENGTH} characters or fewer.`,
-    };
-  }
-  return { ok: true, name };
-}
 
 /** Join first/last into a display name, or null when both are empty. */
 export function displayNameFrom(

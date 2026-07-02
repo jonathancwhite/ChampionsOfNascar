@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 
 import { getOrCreateCurrentUser } from "@/lib/auth";
 import { captureError } from "@/lib/logger";
-import { updateUserDisplayName, validateDisplayName } from "@/lib/users";
+import { validateDisplayName } from "@/lib/display-name";
+import { updateUserDisplayName } from "@/lib/users";
 
 export type UpdateDisplayNameState = {
   error?: string;

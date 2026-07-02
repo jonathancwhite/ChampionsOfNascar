@@ -17,7 +17,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { DISPLAY_NAME_MAX_LENGTH } from "@/lib/users";
+import { DISPLAY_NAME_MAX_LENGTH } from "@/lib/display-name";
 
 const initialState: UpdateDisplayNameState = {};
 
