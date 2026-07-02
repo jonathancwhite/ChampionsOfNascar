@@ -53,8 +53,8 @@ export default async function ManageSchedulePage({
           Manage schedule
         </h1>
         <p className="text-muted-foreground mt-1">
-          Swap any round&apos;s track for another from the series pool. Dates
-          and round numbers are preserved; completed races are locked.
+          Click a round to set its date, swap tracks, or cancel. Completed races
+          are read-only.
         </p>
       </div>
 
@@ -62,7 +62,7 @@ export default async function ManageSchedulePage({
         <CardHeader>
           <CardTitle>Rounds</CardTitle>
           <CardDescription>
-            Replacements come from tracks not already used in this league.
+            Click a row to edit. Track swaps use unused series tracks.
           </CardDescription>
         </CardHeader>
         <CardContent>

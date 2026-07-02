@@ -1,4 +1,6 @@
-import Link from "next/link";
+"use client";
+
+import { useRouter } from "next/navigation";
 
 import { RaceStatusBadge } from "@/components/race-status-badge";
 import { LocalDateTime } from "@/components/local-date-time";
@@ -22,9 +24,11 @@ const TRACK_TYPE_LABELS: Record<string, string> = {
   dirt: "Dirt",
 };
 
-// Shared season schedule (NASCAR-042). Read-only for everyone here; admin
-// management links live on the manage view (NASCAR-041/050). Past and cancelled
-// rounds are visually de-emphasized.
+const CLICKABLE_ROW =
+  "cursor-pointer transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
+
+// Shared season schedule (NASCAR-042). Row click opens the race detail page
+// (NASCAR-085). Past and cancelled rounds are visually de-emphasized.
 export function ScheduleTable({
   leagueId,
   rounds,
@@ -34,12 +38,18 @@ export function ScheduleTable({
   rounds: ScheduleRound[];
   now: Date;
 }) {
+  const router = useRouter();
+
   if (rounds.length === 0) {
     return (
       <p className="text-muted-foreground text-sm">
         No schedule yet — it&apos;s generated when the league is created.
       </p>
     );
+  }
+
+  function goToRace(raceId: string) {
+    router.push(`/leagues/${leagueId}/races/${raceId}`);
   }
 
   return (
@@ -62,16 +72,21 @@ export function ScheduleTable({
           return (
             <TableRow
               key={round.raceId}
-              className={cn(isPast && "text-muted-foreground")}
+              className={cn(CLICKABLE_ROW, isPast && "text-muted-foreground")}
+              tabIndex={0}
+              role="link"
+              aria-label={`View round ${round.round}, ${round.trackName}`}
+              onClick={() => goToRace(round.raceId)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  goToRace(round.raceId);
+                }
+              }}
             >
               <TableCell className="tabular-nums">{round.round}</TableCell>
               <TableCell>
-                <Link
-                  href={`/leagues/${leagueId}/races/${round.raceId}`}
-                  className="hover:text-foreground font-medium hover:underline"
-                >
-                  {round.trackName}
-                </Link>
+                <span className="font-medium">{round.trackName}</span>
                 {round.trackType ? (
                   <span className="text-muted-foreground ml-2 text-xs">
                     {TRACK_TYPE_LABELS[round.trackType] ?? round.trackType}
