@@ -253,3 +253,148 @@ export async function swapTrack(
     return { ok: true };
   });
 }
+
+export type RaceRoundSummary = {
+  round: number;
+  status: string;
+};
+
+export type AdjustRaceCountResult =
+  { ok: true; noop?: boolean } | { ok: false; error: string };
+
+/**
+ * Pure validation for changing a league's race count (NASCAR-088). Decrease is
+ * blocked when a completed tail race would be removed; increase requires enough
+ * unused tracks in the series pool.
+ */
+export function validateRaceCountAdjust(args: {
+  currentCount: number;
+  newCount: number;
+  maxPool: number;
+  leagueStatus: string;
+  races: readonly RaceRoundSummary[];
+}): AdjustRaceCountResult {
+  if (args.leagueStatus === "finished") {
+    return {
+      ok: false,
+      error: "Cannot change the race count for a finished league.",
+    };
+  }
+
+  if (!Number.isInteger(args.newCount) || args.newCount < 1) {
+    return { ok: false, error: "At least 1 race is required." };
+  }
+
+  if (args.newCount > args.maxPool) {
+    return {
+      ok: false,
+      error: `Maximum ${args.maxPool} races for this series (track pool size).`,
+    };
+  }
+
+  if (args.newCount === args.currentCount) {
+    return { ok: true, noop: true };
+  }
+
+  if (args.newCount < args.currentCount) {
+    const blocking = args.races.find(
+      (r) => r.round > args.newCount && r.status === "COMPLETED",
+    );
+    if (blocking) {
+      return {
+        ok: false,
+        error: `Cannot shorten the schedule — round ${blocking.round} is already completed.`,
+      };
+    }
+    return { ok: true };
+  }
+
+  const toAdd = args.newCount - args.currentCount;
+  const unusedTracks = args.maxPool - args.races.length;
+  if (toAdd > unusedTracks) {
+    return {
+      ok: false,
+      error: `Not enough unused tracks to add ${toAdd} more race${toAdd === 1 ? "" : "s"}.`,
+    };
+  }
+
+  return { ok: true };
+}
+
+/**
+ * Increase or decrease a league's schedule length from the tail (NASCAR-088).
+ * Appends randomized unused tracks on increase; removes highest rounds on
+ * decrease (never completed races). Updates `League.numberOfRaces`. Does not
+ * reorder existing rounds. Authorization is the caller's job.
+ */
+export async function adjustRaceCount(
+  db: PrismaClient,
+  leagueId: string,
+  newCount: number,
+  rng: () => number = Math.random,
+): Promise<AdjustRaceCountResult> {
+  return db.$transaction(async (tx) => {
+    const league = await tx.league.findUnique({
+      where: { id: leagueId },
+      select: { series: true, numberOfRaces: true, status: true },
+    });
+    if (!league) {
+      return { ok: false, error: "League not found." };
+    }
+
+    const races = await tx.race.findMany({
+      where: { leagueId },
+      select: { round: true, status: true, trackId: true },
+      orderBy: { round: "asc" },
+    });
+
+    const maxPool = await tx.track.count({
+      where: { active: true, series: { has: league.series } },
+    });
+
+    const validation = validateRaceCountAdjust({
+      currentCount: league.numberOfRaces,
+      newCount,
+      maxPool,
+      leagueStatus: league.status,
+      races,
+    });
+    if (!validation.ok) return validation;
+    if (validation.noop) return { ok: true };
+
+    if (newCount < league.numberOfRaces) {
+      await tx.race.deleteMany({
+        where: { leagueId, round: { gt: newCount } },
+      });
+    } else {
+      const usedTrackIds = new Set(races.map((r) => r.trackId));
+      const available = await tx.track.findMany({
+        where: {
+          active: true,
+          series: { has: league.series },
+          id: { notIn: [...usedTrackIds] },
+        },
+        select: { id: true },
+      });
+
+      const toAdd = newCount - league.numberOfRaces;
+      const picked = pickTracks(available, toAdd, rng);
+      const startRound = league.numberOfRaces + 1;
+
+      await tx.race.createMany({
+        data: picked.map((track, index) => ({
+          leagueId,
+          trackId: track.id,
+          round: startRound + index,
+        })),
+      });
+    }
+
+    await tx.league.update({
+      where: { id: leagueId },
+      data: { numberOfRaces: newCount },
+    });
+
+    return { ok: true };
+  });
+}

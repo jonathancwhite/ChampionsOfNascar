@@ -13,6 +13,7 @@ import {
   mulberry32,
   pickTracks,
   shuffle,
+  validateRaceCountAdjust,
   validateTrackSwap,
 } from "./schedule";
 
@@ -176,4 +177,74 @@ test("validateTrackSwap enforces the no-repeat rule", () => {
   const r = validateTrackSwap({ ...okSwap, newTrackAlreadyUsed: true });
   assert.equal(r.ok, false);
   assert.match(r.ok ? "" : r.error, /already used/i);
+});
+
+// --- Race count adjust (NASCAR-088) -------------------------------------------
+
+const baseRaces = Array.from({ length: 12 }, (_, i) => ({
+  round: i + 1,
+  status: "SCHEDULED",
+}));
+
+test("validateRaceCountAdjust allows increase when unused tracks remain", () => {
+  assert.deepEqual(
+    validateRaceCountAdjust({
+      currentCount: 12,
+      newCount: 15,
+      maxPool: 20,
+      leagueStatus: "active",
+      races: baseRaces,
+    }),
+    { ok: true },
+  );
+});
+
+test("validateRaceCountAdjust blocks decrease when a completed tail race would be removed", () => {
+  const races = [...baseRaces.slice(0, 11), { round: 12, status: "COMPLETED" }];
+  const r = validateRaceCountAdjust({
+    currentCount: 12,
+    newCount: 11,
+    maxPool: 20,
+    leagueStatus: "active",
+    races,
+  });
+  assert.equal(r.ok, false);
+  if (!r.ok) assert.match(r.error, /round 12/i);
+});
+
+test("validateRaceCountAdjust allows decrease when tail races are not completed", () => {
+  assert.deepEqual(
+    validateRaceCountAdjust({
+      currentCount: 12,
+      newCount: 10,
+      maxPool: 20,
+      leagueStatus: "setup",
+      races: baseRaces,
+    }),
+    { ok: true },
+  );
+});
+
+test("validateRaceCountAdjust blocks finished leagues", () => {
+  const r = validateRaceCountAdjust({
+    currentCount: 12,
+    newCount: 10,
+    maxPool: 20,
+    leagueStatus: "finished",
+    races: baseRaces,
+  });
+  assert.equal(r.ok, false);
+});
+
+test("validateRaceCountAdjust returns noop when count is unchanged", () => {
+  assert.deepEqual(
+    validateRaceCountAdjust({
+      currentCount: 12,
+      newCount: 12,
+      maxPool: 20,
+      leagueStatus: "active",
+      races: baseRaces,
+    }),
+    { ok: true, noop: true },
+  );
 });

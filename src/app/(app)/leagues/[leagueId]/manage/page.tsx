@@ -12,7 +12,9 @@ import {
 import { LeagueRole } from "@/generated/prisma/enums";
 import { requireLeagueRole } from "@/lib/auth";
 import { getLeagueSettings, getPointsSettings } from "@/lib/league-queries";
+import { trackCountsBySeries } from "@/lib/leagues";
 import { DEFAULT_SCHEME } from "@/lib/points";
+import type { SeriesValue } from "@/lib/series";
 
 import { LeagueSettingsForm } from "./league-settings-form";
 import { DeleteLeagueSection } from "./delete-league-section";
@@ -46,6 +48,8 @@ export default async function ManageLeaguePage({
   }
 
   const points = await getPointsSettings(leagueId);
+  const trackCounts = await trackCountsBySeries();
+  const maxRaces = trackCounts[settings.series as SeriesValue] || 1;
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -72,7 +76,7 @@ export default async function ManageLeaguePage({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <LeagueSettingsForm settings={settings} />
+          <LeagueSettingsForm settings={settings} maxRaces={maxRaces} />
         </CardContent>
       </Card>
 

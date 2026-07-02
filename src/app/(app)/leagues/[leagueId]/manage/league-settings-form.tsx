@@ -20,7 +20,13 @@ function FieldNote({ error, hint }: { error?: string; hint?: string }) {
   return null;
 }
 
-export function LeagueSettingsForm({ settings }: { settings: LeagueSettings }) {
+export function LeagueSettingsForm({
+  settings,
+  maxRaces,
+}: {
+  settings: LeagueSettings;
+  maxRaces: number;
+}) {
   const [state, formAction, pending] = useActionState(
     updateLeagueSettingsAction,
     initialState,
@@ -32,14 +38,30 @@ export function LeagueSettingsForm({ settings }: { settings: LeagueSettings }) {
     reminder: useId(),
     timezone: useId(),
     status: useId(),
+    races: useId(),
   };
   const selectClass =
     "border-input focus-visible:border-ring focus-visible:ring-ring/50 dark:bg-input/30 h-8 w-full rounded-lg border bg-transparent px-2.5 py-1 text-base transition-colors outline-none focus-visible:ring-3 md:text-sm";
   const fieldErrors = state.fieldErrors ?? {};
   const statusOptions = allowedNextStatuses(settings.status);
+  const raceCountLocked = settings.status === "finished";
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    const form = e.currentTarget;
+    const newCount = Number(new FormData(form).get("numberOfRaces"));
+    if (
+      Number.isInteger(newCount) &&
+      newCount < settings.numberOfRaces &&
+      !window.confirm(
+        `Reduce the schedule from ${settings.numberOfRaces} to ${newCount} races? Tail rounds and any scheduled dates on removed races will be lost.`,
+      )
+    ) {
+      e.preventDefault();
+    }
+  }
 
   return (
-    <form action={formAction} className="space-y-5">
+    <form action={formAction} className="space-y-5" onSubmit={handleSubmit}>
       <input type="hidden" name="leagueId" value={settings.id} />
 
       {state.error ? (
@@ -112,6 +134,48 @@ export function LeagueSettingsForm({ settings }: { settings: LeagueSettings }) {
         </div>
       </div>
 
+      <div className="grid gap-5 sm:grid-cols-2">
+        <div>
+          <label
+            htmlFor={ids.races}
+            className="mb-1.5 block text-sm font-medium"
+          >
+            Number of races
+          </label>
+          <Input
+            id={ids.races}
+            name="numberOfRaces"
+            type="number"
+            required
+            min={1}
+            max={maxRaces}
+            defaultValue={settings.numberOfRaces}
+            disabled={raceCountLocked}
+            aria-invalid={Boolean(fieldErrors.numberOfRaces)}
+          />
+          <FieldNote
+            error={fieldErrors.numberOfRaces}
+            hint={
+              raceCountLocked
+                ? "Locked for finished leagues"
+                : `1–${maxRaces} (track pool). Adds or removes tail rounds.`
+            }
+          />
+        </div>
+
+        <div className="border-border bg-muted/30 flex flex-col justify-center rounded-lg border p-3 text-sm">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Series</span>
+            <span className="font-medium">
+              {SERIES_LABELS[settings.series as SeriesValue] ?? settings.series}
+            </span>
+          </div>
+          <p className="text-muted-foreground mt-1 text-xs">
+            Series is fixed after the schedule is generated.
+          </p>
+        </div>
+      </div>
+
       <div>
         <label
           htmlFor={ids.timezone}
@@ -160,23 +224,6 @@ export function LeagueSettingsForm({ settings }: { settings: LeagueSettings }) {
           error={fieldErrors.status}
           hint="Setup → Active → Finished (forward only)"
         />
-      </div>
-
-      {/* Series and race count are fixed once the schedule is generated. */}
-      <div className="border-border bg-muted/30 grid gap-1 rounded-lg border p-3 text-sm">
-        <div className="flex justify-between">
-          <span className="text-muted-foreground">Series</span>
-          <span className="font-medium">
-            {SERIES_LABELS[settings.series as SeriesValue] ?? settings.series}
-          </span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-muted-foreground">Number of races</span>
-          <span className="font-medium">{settings.numberOfRaces}</span>
-        </div>
-        <p className="text-muted-foreground mt-1 text-xs">
-          Series and race count are fixed after the schedule is generated.
-        </p>
       </div>
 
       <div className="pt-1">

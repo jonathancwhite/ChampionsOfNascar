@@ -11,6 +11,7 @@ import {
   isDeleteConfirmationValid,
 } from "@/lib/league-delete";
 import { deleteLeague, updateLeagueSettings } from "@/lib/leagues";
+import { adjustRaceCount } from "@/lib/schedule";
 
 export type ManageLeagueState = {
   ok?: boolean;
@@ -39,6 +40,29 @@ export async function updateLeagueSettingsAction(
     };
   }
 
+  const numberOfRacesRaw = String(formData.get("numberOfRaces") ?? "");
+  const parsedCount = Number(numberOfRacesRaw);
+  if (numberOfRacesRaw !== "" && !Number.isInteger(parsedCount)) {
+    return {
+      fieldErrors: { numberOfRaces: "Enter a whole number." },
+    };
+  }
+
+  const current = await prisma.league.findUnique({
+    where: { id: leagueId },
+    select: { numberOfRaces: true },
+  });
+  if (!current) {
+    return { error: "League not found." };
+  }
+
+  if (numberOfRacesRaw !== "" && parsedCount !== current.numberOfRaces) {
+    const adjust = await adjustRaceCount(prisma, leagueId, parsedCount);
+    if (!adjust.ok) {
+      return { fieldErrors: { numberOfRaces: adjust.error } };
+    }
+  }
+
   const result = await updateLeagueSettings(leagueId, {
     name: String(formData.get("name") ?? ""),
     lapsPercent: String(formData.get("lapsPercent") ?? ""),
@@ -53,6 +77,7 @@ export async function updateLeagueSettingsAction(
 
   revalidatePath(`/leagues/${leagueId}`);
   revalidatePath(`/leagues/${leagueId}/manage`);
+  revalidatePath(`/leagues/${leagueId}/manage/schedule`);
   return { ok: true };
 }
 
