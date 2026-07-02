@@ -10,6 +10,8 @@ import type { Prisma } from "@/generated/prisma/client";
 import type { PrismaClient } from "@/generated/prisma/client";
 import type { SeriesType } from "@/generated/prisma/enums";
 
+import { validateRaceMove } from "./schedule-reorder";
+
 /** Thrown for caller-recoverable schedule problems (empty pool, locked, etc). */
 export class ScheduleError extends Error {
   constructor(message: string) {
@@ -393,6 +395,48 @@ export async function adjustRaceCount(
     await tx.league.update({
       where: { id: leagueId },
       data: { numberOfRaces: newCount },
+    });
+
+    return { ok: true };
+  });
+}
+
+/**
+ * Swap a race with its neighbor one round up or down (NASCAR-089). Preserves
+ * track, date, status, and results — only `round` changes. No email is sent.
+ * Authorization is the caller's job.
+ */
+export async function moveRace(
+  db: PrismaClient,
+  leagueId: string,
+  raceId: string,
+  direction: "up" | "down",
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  return db.$transaction(async (tx) => {
+    const races = await tx.race.findMany({
+      where: { leagueId },
+      select: { id: true, round: true, status: true },
+      orderBy: { round: "asc" },
+    });
+
+    const validation = validateRaceMove({ races, raceId, direction });
+    if (!validation.ok) return validation;
+
+    const race = races.find((r) => r.id === raceId)!;
+    const neighbor = races.find((r) => r.id === validation.swapWithRaceId)!;
+
+    // Two-phase round swap avoids @@unique([leagueId, round]) collisions.
+    await tx.race.update({
+      where: { id: race.id },
+      data: { round: -race.round },
+    });
+    await tx.race.update({
+      where: { id: neighbor.id },
+      data: { round: race.round },
+    });
+    await tx.race.update({
+      where: { id: race.id },
+      data: { round: neighbor.round },
     });
 
     return { ok: true };

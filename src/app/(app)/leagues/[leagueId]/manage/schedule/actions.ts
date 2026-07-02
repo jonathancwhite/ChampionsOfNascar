@@ -6,7 +6,7 @@ import { LeagueRole } from "@/generated/prisma/enums";
 import { requireLeagueRole } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { cancelRace, reinstateRace, setRaceDate } from "@/lib/race-admin";
-import { swapTrack } from "@/lib/schedule";
+import { moveRace, swapTrack } from "@/lib/schedule";
 
 export type SwapState = { ok?: boolean; error?: string };
 
@@ -107,5 +107,30 @@ export async function swapTrackAction(
 
   revalidatePath(`/leagues/${leagueId}`);
   revalidatePath(`/leagues/${leagueId}/manage/schedule`);
+  return { ok: true };
+}
+
+/** Move a race one round up or down (NASCAR-089). No email — dates unchanged. */
+export async function moveRaceAction(
+  leagueId: string,
+  raceId: string,
+  direction: "up" | "down",
+): Promise<SwapState> {
+  const authz = await requireLeagueRole(leagueId, LeagueRole.ADMIN);
+  if (!authz.ok) {
+    return {
+      error:
+        authz.reason === "unauthenticated"
+          ? "You must be signed in."
+          : "Only admins can edit the schedule.",
+    };
+  }
+
+  const result = await moveRace(prisma, leagueId, raceId, direction);
+  if (!result.ok) return { error: result.error };
+
+  revalidatePath(`/leagues/${leagueId}`);
+  revalidatePath(`/leagues/${leagueId}/manage/schedule`);
+  revalidatePath(`/leagues/${leagueId}/standings`);
   return { ok: true };
 }

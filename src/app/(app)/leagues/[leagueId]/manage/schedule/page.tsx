@@ -53,8 +53,8 @@ export default async function ManageSchedulePage({
           Manage schedule
         </h1>
         <p className="text-muted-foreground mt-1">
-          Click a round to set its date, swap tracks, or cancel. Completed races
-          are read-only.
+          Click a round to edit, or use arrows to reorder. Completed races stay
+          pinned.
         </p>
       </div>
 
@@ -62,7 +62,7 @@ export default async function ManageSchedulePage({
         <CardHeader>
           <CardTitle>Rounds</CardTitle>
           <CardDescription>
-            Click a row to edit. Track swaps use unused series tracks.
+            Click a row to edit, or reorder with the arrows.
           </CardDescription>
         </CardHeader>
         <CardContent>
