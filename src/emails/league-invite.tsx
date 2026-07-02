@@ -22,9 +22,9 @@ export function LeagueInviteEmail({
     >
       <Text style={text.heading}>You&apos;re invited to race</Text>
       <Text style={text.paragraph}>
-        {inviterName} invited you to join <strong>{leagueName}</strong> on the
-        NASCAR 25 Championship Tracker. Click below to join the league — the
-        join code is already filled in for you.
+        {inviterName} invited you to join <strong>{leagueName}</strong> on
+        Champions of NASCAR. Click below to join the league — the join code is
+        already filled in for you.
       </Text>
       <Section style={{ margin: "8px 0 20px" }}>
         <Button style={text.button} href={joinUrl}>

@@ -1,4 +1,4 @@
-# NASCAR 25 Championship Tracker
+# Champions of NASCAR
 
 A web app for running an online NASCAR career across shared leagues, built around the settings of the **NASCAR 25** game (iRacing Studios).
 
@@ -44,7 +44,7 @@ All variables live in `.env` (gitignored; never commit real secrets). See
 | `NEXT_PUBLIC_CLERK_SIGN_IN_URL` / `..._SIGN_UP_URL`                                     | recommended | Set to `/sign-in` and `/sign-up` to keep auth in-app instead of Clerk's hosted Account Portal.            |
 | `NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL` / `..._SIGN_UP_FALLBACK_REDIRECT_URL` | recommended | Where to land after auth, e.g. `/dashboard`.                                                              |
 | `RESEND_API_KEY`                                                                        | yes         | Resend Dashboard → API Keys.                                                                              |
-| `EMAIL_FROM`                                                                            | yes         | A verified sender on your Resend domain, e.g. `NASCAR 25 <noreply@yourdomain.com>`.                       |
+| `EMAIL_FROM`                                                                            | yes         | A verified sender on your Resend domain, e.g. `Champions of NASCAR <noreply@yourdomain.com>`.             |
 | `EMAIL_UNSUBSCRIBE_SECRET`                                                              | yes         | Generate a high-entropy string: `openssl rand -hex 32`. Signs email unsubscribe links.                    |
 | `CRON_SECRET`                                                                           | yes         | Generate a high-entropy string: `openssl rand -hex 32`.                                                   |
 | `NEXT_PUBLIC_APP_URL`                                                                   | yes         | Public origin, no trailing slash. Local: `http://localhost:3000`.                                         |

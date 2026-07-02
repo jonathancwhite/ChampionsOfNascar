@@ -34,18 +34,18 @@ without a database because the app's pages are `force-dynamic`.)
 Set these for **Production** and **Preview** (Vercel → Settings → Environment
 Variables). They mirror `src/lib/env.ts`.
 
-| Variable                            | Notes                                                                         |
-| ----------------------------------- | ----------------------------------------------------------------------------- |
-| `DATABASE_URL`                      | **Pooled** Postgres URL (PgBouncer/Neon pooler) — used by the app at runtime. |
-| `DIRECT_URL`                        | **Unpooled** Postgres URL — used by `prisma migrate deploy`.                  |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk **production** publishable key.                                         |
-| `CLERK_SECRET_KEY`                  | Clerk production secret.                                                      |
-| `CLERK_WEBHOOK_SECRET`              | Signing secret of the production webhook (step 4).                            |
-| `RESEND_API_KEY`                    | Resend API key.                                                               |
-| `EMAIL_FROM`                        | Sender on a **verified** domain, e.g. `NASCAR 25 <noreply@yourdomain.com>`.   |
-| `EMAIL_UNSUBSCRIBE_SECRET`          | High-entropy random string (`openssl rand -hex 32`).                          |
-| `CRON_SECRET`                       | High-entropy random string — Vercel Cron sends it as a Bearer token (step 5). |
-| `NEXT_PUBLIC_APP_URL`               | The production origin, e.g. `https://your-app.vercel.app`.                    |
+| Variable                            | Notes                                                                                 |
+| ----------------------------------- | ------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                      | **Pooled** Postgres URL (PgBouncer/Neon pooler) — used by the app at runtime.         |
+| `DIRECT_URL`                        | **Unpooled** Postgres URL — used by `prisma migrate deploy`.                          |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk **production** publishable key.                                                 |
+| `CLERK_SECRET_KEY`                  | Clerk production secret.                                                              |
+| `CLERK_WEBHOOK_SECRET`              | Signing secret of the production webhook (step 4).                                    |
+| `RESEND_API_KEY`                    | Resend API key.                                                                       |
+| `EMAIL_FROM`                        | Sender on a **verified** domain, e.g. `Champions of NASCAR <noreply@yourdomain.com>`. |
+| `EMAIL_UNSUBSCRIBE_SECRET`          | High-entropy random string (`openssl rand -hex 32`).                                  |
+| `CRON_SECRET`                       | High-entropy random string — Vercel Cron sends it as a Bearer token (step 5).         |
+| `NEXT_PUBLIC_APP_URL`               | The production origin, e.g. `https://your-app.vercel.app`.                            |
 
 ## 3. Database & migrations
 

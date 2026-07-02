@@ -21,6 +21,7 @@ test("league invite renders with the league name and join link", async () => {
   );
   assert.match(html, /Sunday Night Throwdown/);
   assert.match(html, /Dale/);
+  assert.match(html, /Champions of NASCAR/);
   assert.match(html, /leagues\/join\?code=ABCD2345/);
   // Invites have no unsubscribe link (recipient isn't a subscriber).
   assert.doesNotMatch(html, /unsubscribe/i);

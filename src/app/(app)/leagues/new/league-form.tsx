@@ -162,8 +162,8 @@ export function LeagueForm({
       </div>
 
       <div className="flex items-center gap-3 pt-2">
-        <Button type="submit" disabled={pending}>
-          {pending ? "Creating…" : "Create league"}
+        <Button type="submit" loading={pending} loadingText="Creating…">
+          Create league
         </Button>
         <Link
           href="/dashboard"

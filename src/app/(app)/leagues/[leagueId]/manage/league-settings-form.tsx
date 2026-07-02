@@ -180,8 +180,8 @@ export function LeagueSettingsForm({ settings }: { settings: LeagueSettings }) {
       </div>
 
       <div className="pt-1">
-        <Button type="submit" disabled={pending}>
-          {pending ? "Saving…" : "Save settings"}
+        <Button type="submit" loading={pending} loadingText="Saving…">
+          Save settings
         </Button>
       </div>
     </form>

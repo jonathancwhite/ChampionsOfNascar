@@ -25,7 +25,7 @@ jobs:
       CLERK_SECRET_KEY: ci-clerk-secret
       CLERK_WEBHOOK_SECRET: ci-webhook-secret
       RESEND_API_KEY: ci-resend-key
-      EMAIL_FROM: NASCAR 25 <noreply@example.com>
+      EMAIL_FROM: Champions of NASCAR <noreply@example.com>
       CRON_SECRET: ci-cron-secret
       EMAIL_UNSUBSCRIBE_SECRET: ci-unsubscribe-secret
 

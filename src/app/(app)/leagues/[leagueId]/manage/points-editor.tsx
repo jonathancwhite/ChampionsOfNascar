@@ -124,8 +124,8 @@ export function PointsEditor({
         ) : null}
 
         <div className="flex items-center gap-2">
-          <Button type="submit" disabled={pending}>
-            {pending ? "Saving…" : "Save scoring"}
+          <Button type="submit" loading={pending} loadingText="Saving…">
+            Save scoring
           </Button>
           <Button
             type="button"
@@ -181,14 +181,15 @@ function RecomputeOffer({
         type="button"
         variant="outline"
         size="sm"
-        disabled={pending}
+        loading={pending}
+        loadingText="Recomputing…"
         onClick={() =>
           startTransition(async () => {
             setResult(await recomputePointsAction(leagueId));
           })
         }
       >
-        {pending ? "Recomputing…" : "Recompute now"}
+        Recompute now
       </Button>
     </div>
   );

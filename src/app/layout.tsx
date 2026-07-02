@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "NASCAR 25 Championship Tracker",
-    template: "%s · NASCAR 25 Championship",
+    default: "Champions of NASCAR",
+    template: "%s · Champions of NASCAR",
   },
   description:
     "Run an online NASCAR career across shared leagues built around NASCAR 25.",

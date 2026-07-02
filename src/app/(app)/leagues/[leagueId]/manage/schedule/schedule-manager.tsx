@@ -44,6 +44,7 @@ export function ScheduleManager({
   availableTracks: TrackOption[];
   timezoneLabel: string;
 }) {
+  const [activeKey, setActiveKey] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [picks, setPicks] = useState<Record<string, string>>({});
@@ -51,12 +52,21 @@ export function ScheduleManager({
     Object.fromEntries(rounds.map((r) => [r.raceId, r.scheduledInput])),
   );
 
-  function run(action: () => Promise<{ error?: string }>, onOk?: () => void) {
+  function run(
+    key: string,
+    action: () => Promise<{ error?: string }>,
+    onOk?: () => void,
+  ) {
     setError(null);
+    setActiveKey(key);
     startTransition(async () => {
-      const res = await action();
-      if (res.error) setError(res.error);
-      else onOk?.();
+      try {
+        const res = await action();
+        if (res.error) setError(res.error);
+        else onOk?.();
+      } finally {
+        setActiveKey(null);
+      }
     });
   }
 
@@ -86,172 +96,194 @@ export function ScheduleManager({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {rounds.map((round) => (
-            <TableRow key={round.raceId}>
-              <TableCell className="tabular-nums">{round.round}</TableCell>
-              <TableCell className="font-medium">{round.trackName}</TableCell>
-              <TableCell>
-                {round.canEditDate ? (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Input
-                      type="datetime-local"
-                      value={dates[round.raceId] ?? ""}
-                      disabled={pending}
-                      onChange={(e) =>
-                        setDates((prev) => ({
-                          ...prev,
-                          [round.raceId]: e.target.value,
-                        }))
-                      }
-                      className="w-52"
-                    />
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={pending || !dates[round.raceId]}
-                      onClick={() =>
-                        run(() =>
-                          setRaceDateAction(
-                            leagueId,
-                            round.raceId,
-                            dates[round.raceId] || null,
-                          ),
-                        )
-                      }
-                    >
-                      Set
-                    </Button>
-                    {round.scheduledAt ? (
+          {rounds.map((round) => {
+            const setKey = `set-${round.raceId}`;
+            const clearKey = `clear-${round.raceId}`;
+            const cancelKey = `cancel-${round.raceId}`;
+            const reinstateKey = `reinstate-${round.raceId}`;
+            const swapKey = `swap-${round.raceId}`;
+
+            return (
+              <TableRow key={round.raceId}>
+                <TableCell className="tabular-nums">{round.round}</TableCell>
+                <TableCell className="font-medium">{round.trackName}</TableCell>
+                <TableCell>
+                  {round.canEditDate ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Input
+                        type="datetime-local"
+                        value={dates[round.raceId] ?? ""}
+                        disabled={pending}
+                        onChange={(e) =>
+                          setDates((prev) => ({
+                            ...prev,
+                            [round.raceId]: e.target.value,
+                          }))
+                        }
+                        className="w-52"
+                      />
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        loading={activeKey === setKey}
+                        loadingText="Setting…"
+                        disabled={pending || !dates[round.raceId]}
+                        onClick={() =>
+                          run(setKey, () =>
+                            setRaceDateAction(
+                              leagueId,
+                              round.raceId,
+                              dates[round.raceId] || null,
+                            ),
+                          )
+                        }
+                      >
+                        Set
+                      </Button>
+                      {round.scheduledAt ? (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          loading={activeKey === clearKey}
+                          loadingText="Clearing…"
+                          disabled={pending}
+                          onClick={() =>
+                            run(
+                              clearKey,
+                              () =>
+                                setRaceDateAction(leagueId, round.raceId, null),
+                              () =>
+                                setDates((prev) => ({
+                                  ...prev,
+                                  [round.raceId]: "",
+                                })),
+                            )
+                          }
+                        >
+                          Clear
+                        </Button>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <LocalDateTime value={round.scheduledAt} />
+                  )}
+                </TableCell>
+                <TableCell>
+                  <div className="flex flex-col items-start gap-1.5">
+                    <RaceStatusBadge status={round.status} />
+                    {round.status === "SCHEDULED" ? (
                       <Button
                         size="sm"
                         variant="ghost"
+                        loading={activeKey === cancelKey}
+                        loadingText="Cancelling…"
                         disabled={pending}
+                        className="text-destructive hover:text-destructive h-auto px-0 py-0 text-xs"
+                        onClick={() => {
+                          const reason = window.prompt(
+                            `Cancel round ${round.round} (${round.trackName})? Members will be notified. Optional reason:`,
+                          );
+                          // prompt returns null when the admin dismisses it.
+                          if (reason === null) return;
+                          run(cancelKey, () =>
+                            cancelRaceAction(
+                              leagueId,
+                              round.raceId,
+                              reason.trim() || null,
+                            ),
+                          );
+                        }}
+                      >
+                        Cancel race
+                      </Button>
+                    ) : null}
+                    {round.status === "CANCELLED" ? (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        loading={activeKey === reinstateKey}
+                        loadingText="Reinstating…"
+                        disabled={pending}
+                        className="h-auto px-0 py-0 text-xs"
+                        onClick={() => {
+                          if (
+                            !window.confirm(
+                              `Reinstate round ${round.round}? It returns to scheduled with no date — re-date it to notify members.`,
+                            )
+                          ) {
+                            return;
+                          }
+                          run(reinstateKey, () =>
+                            reinstateRaceAction(leagueId, round.raceId),
+                          );
+                        }}
+                      >
+                        Reinstate
+                      </Button>
+                    ) : null}
+                  </div>
+                </TableCell>
+                <TableCell className="text-right">
+                  {!round.canSwap ? (
+                    <span className="text-muted-foreground text-xs">
+                      Locked (completed)
+                    </span>
+                  ) : noTracksLeft ? (
+                    <span className="text-muted-foreground text-xs">
+                      No spare tracks
+                    </span>
+                  ) : (
+                    <div className="flex justify-end gap-2">
+                      <select
+                        aria-label={`Replacement track for round ${round.round}`}
+                        className={cn(SELECT_CLASS)}
+                        value={picks[round.raceId] ?? ""}
+                        disabled={pending}
+                        onChange={(e) =>
+                          setPicks((prev) => ({
+                            ...prev,
+                            [round.raceId]: e.target.value,
+                          }))
+                        }
+                      >
+                        <option value="">Pick a track…</option>
+                        {availableTracks.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.name}
+                          </option>
+                        ))}
+                      </select>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        loading={activeKey === swapKey}
+                        loadingText="Swapping…"
+                        disabled={pending || !picks[round.raceId]}
                         onClick={() =>
                           run(
+                            swapKey,
                             () =>
-                              setRaceDateAction(leagueId, round.raceId, null),
+                              swapTrackAction(
+                                leagueId,
+                                round.raceId,
+                                picks[round.raceId],
+                              ),
                             () =>
-                              setDates((prev) => ({
+                              setPicks((prev) => ({
                                 ...prev,
                                 [round.raceId]: "",
                               })),
                           )
                         }
                       >
-                        Clear
+                        Swap
                       </Button>
-                    ) : null}
-                  </div>
-                ) : (
-                  <LocalDateTime value={round.scheduledAt} />
-                )}
-              </TableCell>
-              <TableCell>
-                <div className="flex flex-col items-start gap-1.5">
-                  <RaceStatusBadge status={round.status} />
-                  {round.status === "SCHEDULED" ? (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      disabled={pending}
-                      className="text-destructive hover:text-destructive h-auto px-0 py-0 text-xs"
-                      onClick={() => {
-                        const reason = window.prompt(
-                          `Cancel round ${round.round} (${round.trackName})? Members will be notified. Optional reason:`,
-                        );
-                        // prompt returns null when the admin dismisses it.
-                        if (reason === null) return;
-                        run(() =>
-                          cancelRaceAction(
-                            leagueId,
-                            round.raceId,
-                            reason.trim() || null,
-                          ),
-                        );
-                      }}
-                    >
-                      Cancel race
-                    </Button>
-                  ) : null}
-                  {round.status === "CANCELLED" ? (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      disabled={pending}
-                      className="h-auto px-0 py-0 text-xs"
-                      onClick={() => {
-                        if (
-                          !window.confirm(
-                            `Reinstate round ${round.round}? It returns to scheduled with no date — re-date it to notify members.`,
-                          )
-                        ) {
-                          return;
-                        }
-                        run(() => reinstateRaceAction(leagueId, round.raceId));
-                      }}
-                    >
-                      Reinstate
-                    </Button>
-                  ) : null}
-                </div>
-              </TableCell>
-              <TableCell className="text-right">
-                {!round.canSwap ? (
-                  <span className="text-muted-foreground text-xs">
-                    Locked (completed)
-                  </span>
-                ) : noTracksLeft ? (
-                  <span className="text-muted-foreground text-xs">
-                    No spare tracks
-                  </span>
-                ) : (
-                  <div className="flex justify-end gap-2">
-                    <select
-                      aria-label={`Replacement track for round ${round.round}`}
-                      className={cn(SELECT_CLASS)}
-                      value={picks[round.raceId] ?? ""}
-                      disabled={pending}
-                      onChange={(e) =>
-                        setPicks((prev) => ({
-                          ...prev,
-                          [round.raceId]: e.target.value,
-                        }))
-                      }
-                    >
-                      <option value="">Pick a track…</option>
-                      {availableTracks.map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.name}
-                        </option>
-                      ))}
-                    </select>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={pending || !picks[round.raceId]}
-                      onClick={() =>
-                        run(
-                          () =>
-                            swapTrackAction(
-                              leagueId,
-                              round.raceId,
-                              picks[round.raceId],
-                            ),
-                          () =>
-                            setPicks((prev) => ({
-                              ...prev,
-                              [round.raceId]: "",
-                            })),
-                        )
-                      }
-                    >
-                      Swap
-                    </Button>
-                  </div>
-                )}
-              </TableCell>
-            </TableRow>
-          ))}
+                    </div>
+                  )}
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     </div>

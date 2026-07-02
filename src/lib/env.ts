@@ -29,7 +29,7 @@ const serverSchema = z.object({
   CLERK_WEBHOOK_SECRET: z.string().min(1),
   // Resend transactional email (NASCAR-051/052/053).
   RESEND_API_KEY: z.string().min(1),
-  // Verified "From" address, e.g. `NASCAR 25 <noreply@yourdomain.com>`.
+  // Verified "From" address, e.g. `Champions of NASCAR <noreply@yourdomain.com>`.
   EMAIL_FROM: z.string().min(1),
   // High-entropy shared secret guarding the reminder cron route (NASCAR-052).
   CRON_SECRET: z.string().min(1),

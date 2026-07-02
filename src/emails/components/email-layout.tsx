@@ -71,7 +71,7 @@ export function EmailLayout({
       <Body style={styles.body}>
         <Container style={styles.container}>
           <Section style={styles.header}>
-            <Text style={styles.brand}>🏁 NASCAR 25 Championship</Text>
+            <Text style={styles.brand}>🏁 Champions of NASCAR</Text>
           </Section>
           <Section style={styles.content}>{children}</Section>
           <Hr style={{ borderColor: "#e4e4e7", margin: "0 28px" }} />
@@ -80,8 +80,7 @@ export function EmailLayout({
               <Text style={styles.footerText}>{footerNote}</Text>
             ) : null}
             <Text style={styles.footerText}>
-              NASCAR 25 Championship Tracker — a fan project for running online
-              careers.
+              Champions of NASCAR — a fan project for running online careers.
               {unsubscribeUrl ? (
                 <>
                   {" "}

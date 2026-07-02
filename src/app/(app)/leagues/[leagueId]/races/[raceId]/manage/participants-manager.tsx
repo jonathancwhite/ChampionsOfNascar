@@ -170,8 +170,13 @@ export function ParticipantsManager({
         </div>
       ) : null}
 
-      <Button type="button" onClick={save} disabled={pending}>
-        {pending ? "Saving…" : "Save participants"}
+      <Button
+        type="button"
+        onClick={save}
+        loading={pending}
+        loadingText="Saving…"
+      >
+        Save participants
       </Button>
     </div>
   );

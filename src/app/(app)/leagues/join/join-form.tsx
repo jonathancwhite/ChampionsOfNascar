@@ -48,8 +48,8 @@ export function JoinForm({ defaultCode = "" }: { defaultCode?: string }) {
       </div>
 
       <div className="flex items-center gap-3 pt-2">
-        <Button type="submit" disabled={pending}>
-          {pending ? "Joining…" : "Join league"}
+        <Button type="submit" loading={pending} loadingText="Joining…">
+          Join league
         </Button>
         <Link
           href="/dashboard"

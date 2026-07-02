@@ -174,12 +174,13 @@ export function ResultsForm({
         </p>
       ) : null}
 
-      <Button type="button" onClick={save} disabled={pending}>
-        {pending
-          ? "Saving…"
-          : isCompleted
-            ? "Save changes"
-            : "Save results & complete race"}
+      <Button
+        type="button"
+        onClick={save}
+        loading={pending}
+        loadingText="Saving…"
+      >
+        {isCompleted ? "Save changes" : "Save results & complete race"}
       </Button>
     </div>
   );

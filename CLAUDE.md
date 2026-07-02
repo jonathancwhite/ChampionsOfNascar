@@ -1,4 +1,4 @@
-# CLAUDE.md — NASCAR 25 Championship Tracker
+# CLAUDE.md — Champions of NASCAR
 
 Guidance for working in this repository.
 

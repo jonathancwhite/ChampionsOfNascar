@@ -36,15 +36,25 @@ export function RosterManager({
   members: LeagueMember[];
   viewerIsAdmin: boolean;
 }) {
+  const [activeKey, setActiveKey] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  function run(action: () => Promise<RosterActionState>, confirmMsg?: string) {
+  function run(
+    key: string,
+    action: () => Promise<RosterActionState>,
+    confirmMsg?: string,
+  ) {
     if (confirmMsg && !window.confirm(confirmMsg)) return;
     setError(null);
+    setActiveKey(key);
     startTransition(async () => {
-      const res = await action();
-      if (res?.error) setError(res.error);
+      try {
+        const res = await action();
+        if (res?.error) setError(res.error);
+      } finally {
+        setActiveKey(null);
+      }
     });
   }
 
@@ -73,6 +83,10 @@ export function RosterManager({
           {members.map((m) => {
             const canAdmin = viewerIsAdmin && !m.isYou && !m.isCreator;
             const canLeave = m.isYou && !m.isCreator;
+            const promoteKey = `promote-${m.membershipId}`;
+            const transferKey = `transfer-${m.membershipId}`;
+            const removeKey = `remove-${m.membershipId}`;
+            const leaveKey = `leave-${m.membershipId}`;
             return (
               <TableRow key={m.membershipId}>
                 <TableCell className="font-medium">
@@ -98,9 +112,11 @@ export function RosterManager({
                         <Button
                           size="sm"
                           variant="outline"
+                          loading={activeKey === promoteKey}
+                          loadingText="Promoting…"
                           disabled={pending}
                           onClick={() =>
-                            run(() =>
+                            run(promoteKey, () =>
                               promoteMemberAction(leagueId, m.membershipId),
                             )
                           }
@@ -112,9 +128,12 @@ export function RosterManager({
                         <Button
                           size="sm"
                           variant="outline"
+                          loading={activeKey === transferKey}
+                          loadingText="Transferring…"
                           disabled={pending}
                           onClick={() =>
                             run(
+                              transferKey,
                               () =>
                                 transferOwnershipAction(
                                   leagueId,
@@ -131,10 +150,13 @@ export function RosterManager({
                         <Button
                           size="sm"
                           variant="outline"
+                          loading={activeKey === removeKey}
+                          loadingText="Removing…"
                           disabled={pending}
                           className="text-destructive hover:text-destructive"
                           onClick={() =>
                             run(
+                              removeKey,
                               () =>
                                 removeMemberAction(leagueId, m.membershipId),
                               `Remove ${m.name} from the league? Their past results stay in the standings.`,
@@ -148,10 +170,13 @@ export function RosterManager({
                         <Button
                           size="sm"
                           variant="outline"
+                          loading={activeKey === leaveKey}
+                          loadingText="Leaving…"
                           disabled={pending}
                           className="text-destructive hover:text-destructive"
                           onClick={() =>
                             run(
+                              leaveKey,
                               () => leaveLeagueAction(leagueId),
                               "Leave this league? You'll lose access but your past results remain.",
                             )

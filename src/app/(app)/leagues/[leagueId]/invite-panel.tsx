@@ -57,7 +57,8 @@ function RegenerateCode({ leagueId }: { leagueId: string }) {
         type="button"
         variant="outline"
         size="sm"
-        disabled={pending}
+        loading={pending}
+        loadingText="Regenerating…"
         onClick={() => {
           if (
             !window.confirm(
@@ -73,7 +74,7 @@ function RegenerateCode({ leagueId }: { leagueId: string }) {
           });
         }}
       >
-        {pending ? "Regenerating…" : "Regenerate"}
+        Regenerate
       </Button>
       {error ? <span className="text-destructive text-xs">{error}</span> : null}
     </div>
@@ -188,8 +189,8 @@ export function InvitePanel({
         ) : null}
         {state.summary ? <InviteSummary summary={state.summary} /> : null}
 
-        <Button type="submit" disabled={pending}>
-          {pending ? "Sending…" : "Send invites"}
+        <Button type="submit" loading={pending} loadingText="Sending…">
+          Send invites
         </Button>
       </form>
     </div>

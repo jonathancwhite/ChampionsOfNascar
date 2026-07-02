@@ -18,7 +18,7 @@ export default function AppLayout({
             className="flex items-center gap-2 font-semibold"
           >
             <Flag className="size-5" />
-            NASCAR 25 Championship
+            Champions of NASCAR
           </Link>
           {/* Sign-out lives in the UserButton menu; the post-sign-out
               destination is set via afterSignOutUrl on <ClerkProvider>. */}
