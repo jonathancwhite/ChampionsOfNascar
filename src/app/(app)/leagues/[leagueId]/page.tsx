@@ -20,13 +20,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getOrCreateCurrentUser } from "@/lib/auth";
-import { getLeagueOverview } from "@/lib/league-queries";
+import { getLeagueOverview, getManageSchedule } from "@/lib/league-queries";
 import { leagueStatusLabel } from "@/lib/league-status";
 import { buildInviteUrl } from "@/lib/invites";
 import { SERIES_LABELS, type SeriesValue } from "@/lib/series";
 
 import { InvitePanel } from "./invite-panel";
 import { RosterManager } from "./roster-manager";
+import { ScheduleManager } from "./manage/schedule/schedule-manager";
 
 export const metadata: Metadata = {
   title: "League",
@@ -53,6 +54,7 @@ export default async function LeaguePage({
   }
 
   const { league, isAdmin, schedule, members, standings } = overview;
+  const manageSchedule = isAdmin ? await getManageSchedule(leagueId) : null;
   const now = new Date();
   const topStandings = standings.slice(0, 5);
 
@@ -75,6 +77,12 @@ export default async function LeaguePage({
             <span className="bg-primary/10 text-primary rounded-full px-2 py-0.5 text-xs font-medium">
               Admin
             </span>
+            <Link
+              href="#schedule"
+              className={buttonVariants({ variant: "default", size: "sm" })}
+            >
+              Schedule races
+            </Link>
             <Link
               href={`/leagues/${league.id}/manage`}
               className={buttonVariants({ variant: "outline", size: "sm" })}
@@ -150,26 +158,37 @@ export default async function LeaguePage({
         </CardContent>
       </Card>
 
-      <Card>
+      <Card id="schedule">
         <CardHeader className="flex-row items-center justify-between gap-2 space-y-0">
           <div>
             <CardTitle>Schedule</CardTitle>
             <CardDescription>
-              Randomized from the {SERIES_LABELS[league.series as SeriesValue]}{" "}
-              track pool. Dates are set by an admin.
+              {isAdmin ? (
+                <>
+                  Click a race to set its date and time. Use the arrows to
+                  reorder rounds.
+                </>
+              ) : (
+                <>
+                  Randomized from the{" "}
+                  {SERIES_LABELS[league.series as SeriesValue]} track pool.
+                  Dates are set by an admin.
+                </>
+              )}
             </CardDescription>
           </div>
-          {isAdmin ? (
-            <Link
-              href={`/leagues/${league.id}/manage/schedule`}
-              className={buttonVariants({ variant: "outline", size: "sm" })}
-            >
-              Manage tracks
-            </Link>
-          ) : null}
         </CardHeader>
         <CardContent>
-          <ScheduleTable leagueId={league.id} rounds={schedule} now={now} />
+          {isAdmin && manageSchedule ? (
+            <ScheduleManager
+              leagueId={manageSchedule.leagueId}
+              rounds={manageSchedule.rounds}
+              availableTracks={manageSchedule.availableTracks}
+              timezoneLabel={manageSchedule.timezoneLabel}
+            />
+          ) : (
+            <ScheduleTable leagueId={league.id} rounds={schedule} now={now} />
+          )}
         </CardContent>
       </Card>
 
